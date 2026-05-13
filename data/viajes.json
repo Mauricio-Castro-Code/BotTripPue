@@ -1,0 +1,132 @@
+[
+  {
+    "tipo": "nacional",
+    "destino": "Huatulco, Oaxaca",
+    "salidas": "Parque Juárez y 5 de Mayo",
+    "fecha_salida": "17 Mayo 2026",
+    "no_dias": "3 días / 2 noches",
+    "precio": "Desde $3,550 MXN por persona",
+    "transporte": "Vuelo redondo desde Puebla",
+    "incluye": [
+      "Vuelo redondo",
+      "Seguro de viajero",
+      "Hotel 3 estrellas"
+    ],
+    "reserva_con": "$1,000 MXN de anticipo"
+  },
+  {
+    "tipo": "nacional",
+    "destino": "Riviera Maya",
+    "salidas": "Jueves y domingos",
+    "fecha_salida": "11 Mayo 2026",
+    "no_dias": "5 días / 4 noches",
+    "precio": "$14,500 MXN por persona en habitación doble",
+    "transporte": "Vuelo redondo desde Puebla",
+    "incluye": [
+      "Vuelo redondo",
+      "Hotel todo incluido",
+      "Traslados aeropuerto-hotel-aeropuerto"
+    ],
+    "reserva_con": "$4,500 MXN de anticipo"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Egipto",
+    "salidas": "Puebla",
+    "fecha_salida": "2027",
+    "no_dias": "No especificado",
+    "precio": "$63,000 MXN por persona",
+    "transporte": "Vuelo redondo",
+    "incluye": [
+      "Hospedaje",
+      "Luxor",
+      "Aswan",
+      "Guiza",
+      "El Cairo",
+      "Crucero por el Nilo"
+    ],
+    "lugares": [
+      "Karnak",
+      "Sakkara",
+      "Sobek"
+    ],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "España / Europa",
+    "salidas": "Puebla",
+    "fecha_salida": "Octubre 2026",
+    "no_dias": "No especificado",
+    "precio": "$59,900 MXN por persona",
+    "transporte": "Vuelo internacional",
+    "incluye": [
+      "Partido clásico español",
+      "Visita a París",
+      "Visita a Bruselas",
+      "Visita a Barcelona",
+      "Visita a Madrid"
+    ],
+    "lugares": [
+      "París",
+      "Bruselas",
+      "Barcelona",
+      "Madrid"
+    ],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Hawái",
+    "salidas": "Puebla",
+    "fecha_salida": "No especificado",
+    "no_dias": "5 días",
+    "precio": "$22,300 MXN por persona",
+    "transporte": "Vuelos redondos",
+    "incluye": [
+      "Hospedaje",
+      "Vuelos redondos"
+    ],
+    "requisitos": [
+      "Se necesita visa"
+    ],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Europa XV Años",
+    "salidas": "Puebla",
+    "fecha_salida": "No especificado",
+    "no_dias": "No especificado",
+    "precio": "Desde $55,000 MXN",
+    "transporte": "Vuelos redondos",
+    "incluye": [
+      "Entrada a Disney",
+      "City tour París",
+      "City tour Roma",
+      "Vuelos redondos"
+    ],
+    "lugares": [
+      "París",
+      "Roma",
+      "Disney"
+    ],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "nacional",
+    "destino": "Huatulco, Oaxaca",
+    "salidas": "Puebla",
+    "fecha_salida": "15-17 Mayo",
+    "no_dias": "3 días / 2 noches",
+    "precio": "Desde $3,550 MXN por persona",
+    "transporte": "Viaje redondo",
+    "incluye": [
+      "Seguro de viajero a bordo",
+      "Coordinador de grupo",
+      "Hotel"
+    ],
+    "reserva_con": "No especificado"
+  }
+  
+]

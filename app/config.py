@@ -7,13 +7,6 @@ class Settings(BaseSettings):
     WHATSAPP_TOKEN: str
     WHATSAPP_VERIFY_TOKEN: str
     WHATSAPP_PHONE_NUMBER_ID: str
-    NEGOCIO_ID: str
-    PDF_DIR: str = "pdf"
-    LOGO_PATH: str = "assets/logo.png"
-    EXCEL_TEMPLATE_PATH: str = "assets/Nota.xlsx"
-    LIBREOFFICE_PATH: str = "/Applications/LibreOffice.app/Contents/MacOS/soffice"
-    # Telefonos para los que el bot NO responde (familiares, internos, etc.)
-    # Formato en .env: BLOCKED_PHONES=5212212664376,5215512345678
     BLOCKED_PHONES: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
