@@ -24,7 +24,7 @@ from .services import (
     _ESTADO_POR_OPCION,
     _ESTADOS_CON_IA,
     detectar_opcion_menu,
-    enviar_catalogo_con_botones,
+    enviar_botones_reserva,
     enviar_mensaje_texto,
     es_despedida,
     es_no_interesado,
@@ -142,21 +142,7 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
     historial = list(sesion.historial or [])
     estado = get_estado(historial)
 
-    # Número del menú — disponible desde cualquier estado
-    opcion = detectar_opcion_menu(texto)
-    if opcion:
-        respuesta = get_respuesta_opcion(opcion)
-        nuevo_estado = _ESTADO_POR_OPCION[opcion]
-        msgs = mensajes_openai(historial) + [{"role": "assistant", "content": respuesta}]
-        guardar_historial(db, sesion, set_estado(msgs, nuevo_estado))
-        if opcion in ("1", "2"):
-            guardar_o_actualizar_lead(db, telefono, estatus="informado")
-            enviar_catalogo_con_botones(telefono, respuesta)
-        else:
-            enviar_mensaje_texto(telefono, respuesta)
-        return
-
-    # Conversación libre con OpenAI dentro del estado activo
+    # Conversación activa → OpenAI responde y después aparecen los botones
     if estado in _ESTADOS_CON_IA:
         msgs = preparar_historial(mensajes_openai(historial), texto)
         respuesta, nombre, destino = generar_respuesta_ia(msgs, estado)
@@ -164,10 +150,26 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
         guardar_historial(db, sesion, set_estado(msgs, estado))
         guardar_o_actualizar_lead(db, telefono, nombre=nombre, destino=destino)
         enviar_mensaje_texto(telefono, respuesta)
+        enviar_botones_reserva(telefono)
         return
 
-    # Sin contexto activo → mostrar menú
-    enviar_mensaje_texto(telefono, _MENU_OPCIONES)
+    # Menú principal → detectar opción (solo cuando no hay conversación activa)
+    opcion = detectar_opcion_menu(texto)
+    if opcion:
+        respuesta = get_respuesta_opcion(opcion)
+        nuevo_estado = _ESTADO_POR_OPCION[opcion]
+        msgs = mensajes_openai(historial) + [{"role": "assistant", "content": respuesta}]
+        guardar_historial(db, sesion, set_estado(msgs, nuevo_estado))
+        guardar_o_actualizar_lead(db, telefono, estatus="informado")
+        enviar_mensaje_texto(telefono, respuesta)
+        return
+
+    # Nada reconocido → pedir que elijan del menú
+    enviar_mensaje_texto(
+        telefono,
+        "¡Hmm, no entendí bien! 😊 Por favor elige una opción o cuéntame qué duda tienes:\n\n"
+        + _MENU_OPCIONES,
+    )
 
 
 @app.get("/health")

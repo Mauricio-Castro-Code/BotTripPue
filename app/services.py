@@ -183,7 +183,7 @@ _KEYWORDS_OPCION: dict[str, set[str]] = {
     "3": {"3", "aparte", "aparté", "ya aparte", "ya aparté", "soy cliente", "cliente", "mi viaje", "mi reserva"},
     "4": {"4", "precio", "precios", "pago", "pagos", "costo", "costos", "cuanto cuesta", "cuánto cuesta", "formas de pago",
           "requisito", "requisitos", "documentos", "pasaporte", "visa",
-          "grupo", "grupos", "grupal", "especial", "empresa", "boda", "xv", "quince", "info"},
+          "grupo", "grupos", "grupal", "especial", "empresa", "boda", "xv", "quince"},
 }
 
 
@@ -343,6 +343,24 @@ def enviar_mensaje_texto(telefono: str, mensaje: str) -> None:
         "to": telefono,
         "type": "text",
         "text": {"body": mensaje},
+    })
+
+
+def enviar_botones_reserva(telefono: str) -> None:
+    _post_whatsapp({
+        "messaging_product": "whatsapp",
+        "to": telefono,
+        "type": "interactive",
+        "interactive": {
+            "type": "button",
+            "body": {"text": "¿Te gustaría dar el siguiente paso? 😊"},
+            "action": {
+                "buttons": [
+                    {"type": "reply", "reply": {"id": "btn_reservar", "title": "Quiero reservar"}},
+                    {"type": "reply", "reply": {"id": "btn_terminar", "title": "Terminar chat"}},
+                ]
+            },
+        },
     })
 
 
