@@ -127,6 +127,603 @@
       "Hotel"
     ],
     "reserva_con": "No especificado"
+  },
+
+  {
+    "tipo": "internacional",
+    "destino": "Colombia: Bogotá y San Andrés",
+    "salidas": "No especificado",
+    "fecha_salida": "No especificado",
+    "no_dias": "6 días",
+    "precio": "Desde $26,500 MXN",
+    "transporte": "Vuelos redondos",
+    "incluye": [
+      "Hotel",
+      "Tours",
+      "Vuelos redondos"
+    ],
+    "lugares": [
+      "Bogotá",
+      "San Andrés"
+    ],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Costa Rica",
+    "salidas": "No especificado",
+    "fecha_salida": "No especificado",
+    "no_dias": "No especificado",
+    "precio": "$20,300 MXN",
+    "transporte": "Vuelos redondos",
+    "incluye": [
+      "Vuelos redondos",
+      "Hospedaje",
+      "Tours"
+    ],
+    "lugares": [],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Colombia",
+    "salidas": "No especificado",
+    "fecha_salida": "Fechas disponibles",
+    "no_dias": "7 noches",
+    "precio": "Preventa $24,500 MXN / Precio regular $26,000 MXN",
+    "transporte": "Vuelo redondo",
+    "incluye": [
+      "Vuelo redondo",
+      "Hospedaje",
+      "City tour tickets",
+      "Chiva rumbera",
+      "Isla Barú Party"
+    ],
+    "lugares": [
+      "Colombia",
+      "Isla Barú"
+    ],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Jamaica",
+    "salidas": "No especificado",
+    "fecha_salida": "No especificado",
+    "no_dias": "5 días",
+    "precio": "$24,599 MXN",
+    "transporte": "Vuelo redondo",
+    "incluye": [
+      "Vuelo redondo",
+      "Transporte al hotel",
+      "Airbnb de lujo",
+      "Tours opcionales"
+    ],
+    "lugares": [],
+    "requisitos": [],
+    "reserva_con": "Desde $5,000 MXN"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Hawái",
+    "salidas": "No especificado",
+    "fecha_salida": "No especificado",
+    "no_dias": "5 días",
+    "precio": "$22,300 MXN",
+    "transporte": "Vuelos redondos",
+    "incluye": [
+      "Hospedaje",
+      "Vuelos redondos"
+    ],
+    "lugares": [],
+    "requisitos": [
+      "Se necesita visa"
+    ],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Tomorrowland Tailandia",
+    "salidas": "No especificado",
+    "fecha_salida": "Diciembre 2026",
+    "no_dias": "No especificado",
+    "precio": "$89,000 MXN / Con visa americana: $79,000 MXN",
+    "transporte": "Vuelo redondo",
+    "incluye": [
+      "Vuelo redondo",
+      "Entrada a Tomorrowland",
+      "Hospedajes",
+      "Visitas a Phuket y Bangkok",
+      "Traslados",
+      "Asistencia del staff"
+    ],
+    "lugares": [
+      "Tailandia",
+      "Phuket",
+      "Bangkok"
+    ],
+    "requisitos": [
+      "Precio especial con visa americana"
+    ],
+    "reserva_con": "Desde $10,000 MXN"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Panamá",
+    "salidas": "No especificado",
+    "fecha_salida": "No especificado",
+    "no_dias": "5 días",
+    "precio": "$16,000 MXN",
+    "transporte": "Vuelos redondos",
+    "incluye": [
+      "Vuelos redondos",
+      "Canal de Panamá",
+      "Boca de Toro",
+      "Hotel"
+    ],
+    "lugares": [
+      "Canal de Panamá",
+      "Boca de Toro"
+    ],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Punta Cana",
+    "salidas": "No especificado",
+    "fecha_salida": "No especificado",
+    "no_dias": "6 días",
+    "precio": "$14,000 MXN",
+    "transporte": "Vuelos redondos",
+    "incluye": [
+      "Todo incluido",
+      "Vuelos redondos"
+    ],
+    "lugares": [
+      "Punta Cana"
+    ],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Canadá",
+    "salidas": "No especificado",
+    "fecha_salida": "No especificado",
+    "no_dias": "5 días",
+    "precio": "$14,000 MXN por persona",
+    "transporte": "Vuelo redondo",
+    "incluye": [
+      "Vuelo redondo",
+      "Toronto",
+      "Vancouver"
+    ],
+    "lugares": [
+      "Toronto",
+      "Vancouver"
+    ],
+    "requisitos": [
+      "Se necesita visa canadiense"
+    ],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Tomorrowland",
+    "salidas": "No especificado",
+    "fecha_salida": "Preventa hasta el 30 de julio",
+    "no_dias": "No especificado",
+    "precio": "Preventa $72,000 MXN / Precio regular $76,000 MXN",
+    "transporte": "Vuelo redondo",
+    "incluye": [
+      "Entradas",
+      "Hospedaje",
+      "Vuelo redondo",
+      "Asistencia del staff",
+      "Tours incluidos"
+    ],
+    "lugares": [],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Marruecos, Madrid y Portugal",
+    "salidas": "No especificado",
+    "fecha_salida": "No especificado",
+    "no_dias": "11 días",
+    "precio": "Costo $66,500 MXN por persona / Preventa $64,000 MXN",
+    "transporte": "Vuelos",
+    "incluye": [
+      "Hospedajes",
+      "Vuelos",
+      "7 días en Marruecos",
+      "Visita a las ciudades más importantes",
+      "2 días en Portugal",
+      "2 días en Madrid"
+    ],
+    "lugares": [
+      "Marruecos",
+      "Madrid",
+      "Portugal"
+    ],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Alpes Suizos y Europa Medieval",
+    "salidas": "No especificado",
+    "fecha_salida": "No especificado",
+    "no_dias": "No especificado",
+    "precio": "$74,000 MXN por persona",
+    "transporte": "Vuelos",
+    "incluye": [
+      "Traslados",
+      "Hotel",
+      "Vuelos",
+      "Praga",
+      "Milán",
+      "Budapest",
+      "Viena"
+    ],
+    "lugares": [
+      "Praga",
+      "Milán",
+      "Budapest",
+      "Viena"
+    ],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Patagonia y Río de Janeiro",
+    "salidas": "No especificado",
+    "fecha_salida": "No especificado",
+    "no_dias": "No especificado",
+    "precio": "$30,000 MXN",
+    "transporte": "Vuelo redondo",
+    "incluye": [
+      "Vuelo redondo",
+      "Hospedaje",
+      "Tours incluidos",
+      "Seguro de viajero"
+    ],
+    "lugares": [
+      "Patagonia",
+      "Argentina",
+      "Río de Janeiro",
+      "Brasil"
+    ],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Egipto Eclipse 2027",
+    "salidas": "No especificado",
+    "fecha_salida": "2027",
+    "no_dias": "No especificado",
+    "precio": "$63,000 MXN por persona",
+    "transporte": "Vuelos redondos",
+    "incluye": [
+      "Vuelos redondos",
+      "Hospedaje",
+      "Luxor",
+      "Aswan",
+      "Guiza",
+      "El Cairo",
+      "Crucero por el Nilo"
+    ],
+    "lugares": [
+      "Egipto",
+      "Karnak",
+      "Sakkara",
+      "Sobek",
+      "Luxor",
+      "Aswan",
+      "Guiza",
+      "El Cairo",
+      "Río Nilo"
+    ],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Clásico Español",
+    "salidas": "No especificado",
+    "fecha_salida": "Octubre 2026",
+    "no_dias": "No especificado",
+    "precio": "Desde $59,900 MXN",
+    "transporte": "No especificado",
+    "incluye": [
+      "Partido clásico español",
+      "Visita a París",
+      "Visita a Bruselas",
+      "Visita a Barcelona",
+      "Visita a Madrid"
+    ],
+    "lugares": [
+      "París",
+      "Bruselas",
+      "Barcelona",
+      "Madrid"
+    ],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Año Nuevo en el Polo Norte",
+    "salidas": "No especificado",
+    "fecha_salida": "Año Nuevo",
+    "no_dias": "No especificado",
+    "precio": "$92,000 MXN",
+    "transporte": "Vuelos redondos",
+    "incluye": [
+      "Vuelos redondos",
+      "Experiencias árticas con huskies y renos",
+      "Hospedaje",
+      "Tours y más"
+    ],
+    "lugares": [
+      "España",
+      "Noruega",
+      "Finlandia",
+      "Estonia",
+      "Suecia",
+      "Polonia",
+      "Madrid",
+      "Oslo",
+      "Rovaniemi",
+      "Helsinki",
+      "Tallin",
+      "Estocolmo",
+      "Varsovia"
+    ],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Punta Cana, República Dominicana",
+    "salidas": "No especificado",
+    "fecha_salida": "No especificado",
+    "no_dias": "No especificado",
+    "precio": "Desde $25,500 MXN",
+    "transporte": "Vuelo",
+    "incluye": [
+      "Vuelo",
+      "Hospedaje"
+    ],
+    "lugares": [
+      "Punta Cana",
+      "República Dominicana"
+    ],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Australia",
+    "salidas": "No especificado",
+    "fecha_salida": "No especificado",
+    "no_dias": "11 días",
+    "precio": "$88,000 MXN",
+    "transporte": "Vuelos redondos",
+    "incluye": [
+      "Tours",
+      "Vuelos redondos",
+      "Hospedaje",
+      "Traslados"
+    ],
+    "lugares": [
+      "Australia"
+    ],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Perú",
+    "salidas": "No especificado",
+    "fecha_salida": "28 de marzo al 5 de abril",
+    "no_dias": "No especificado",
+    "precio": "Desde $32,500 MXN",
+    "transporte": "Vuelos",
+    "incluye": [
+      "Vuelos",
+      "Visitas",
+      "Desayunos",
+      "Traslados",
+      "Alojamiento"
+    ],
+    "lugares": [
+      "Perú"
+    ],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Europa: París, Bruselas y Ámsterdam",
+    "salidas": "No especificado",
+    "fecha_salida": "Enero / Febrero 2027",
+    "no_dias": "10 días",
+    "precio": "$29,999 MXN",
+    "transporte": "Vuelos",
+    "incluye": [
+      "Vuelos",
+      "Hospedaje",
+      "Tours"
+    ],
+    "lugares": [
+      "París",
+      "Bruselas",
+      "Ámsterdam"
+    ],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Japón: Tokio, Osaka y Kioto",
+    "salidas": "No especificado",
+    "fecha_salida": "1 al 12 de septiembre 2026 / Enero 2027",
+    "no_dias": "No especificado",
+    "precio": "$58,999 MXN",
+    "transporte": "Vuelos",
+    "incluye": [
+      "Vuelos",
+      "Hospedaje",
+      "Tours",
+      "Disney Tokio",
+      "Universal Tokio",
+      "Monte Fuji"
+    ],
+    "lugares": [
+      "Japón",
+      "Tokio",
+      "Osaka",
+      "Kioto",
+      "Disney Tokio",
+      "Universal Tokio",
+      "Monte Fuji"
+    ],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Cruceros sin visa",
+    "salidas": "No especificado",
+    "fecha_salida": "Distintas fechas",
+    "no_dias": "No especificado",
+    "precio": "No especificado",
+    "transporte": "Crucero y vuelos redondos",
+    "incluye": [
+      "Distintos destinos",
+      "Vuelos redondos",
+      "Actividades dentro del crucero",
+      "Distintas fechas"
+    ],
+    "lugares": [],
+    "requisitos": [
+      "Sin visa"
+    ],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Crucero por el Caribe",
+    "salidas": "No especificado",
+    "fecha_salida": "No especificado",
+    "no_dias": "7 noches / 8 días",
+    "precio": "Adultos desde $31,000 MXN / Niños $28,000 MXN / Solo ticket $14,900 MXN",
+    "transporte": "Vuelos redondos y crucero",
+    "incluye": [
+      "Crucero por el Caribe",
+      "Vuelos redondos",
+      "Opción solo ticket"
+    ],
+    "lugares": [
+      "Caribe"
+    ],
+    "requisitos": [],
+    "reserva_con": "No especificado"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "EDC Colombia",
+    "salidas": "No especificado",
+    "fecha_salida": "10 y 11 de octubre 2026",
+    "no_dias": "4 noches de hospedaje",
+    "precio": "$26,000 MXN",
+    "transporte": "Vuelos redondos",
+    "incluye": [
+      "Boletos",
+      "Traslado redondo aeropuerto-hospedaje",
+      "4 noches de hospedaje",
+      "Vuelos redondos",
+      "Lanyard",
+      "Asistencia del staff"
+    ],
+    "lugares": [
+      "Medellín",
+      "Colombia"
+    ],
+    "requisitos": [],
+    "reserva_con": "$3,000 MXN"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Salar de Uyuni y La Paz con opción a Panamá",
+    "salidas": "No especificado",
+    "fecha_salida": "No especificado",
+    "no_dias": "No especificado / Opción a Panamá 3 días extra",
+    "precio": "Preventa $28,500 MXN / Precio de lista $30,000 MXN",
+    "transporte": "Vuelo redondo",
+    "incluye": [
+      "Vuelo redondo",
+      "Hospedaje",
+      "Tour al salar",
+      "Desayuno y almuerzo en salar",
+      "Staff"
+    ],
+    "lugares": [
+      "Salar de Uyuni",
+      "La Paz",
+      "Bolivia",
+      "Panamá"
+    ],
+    "requisitos": [],
+    "reserva_con": "Reserva con el 50%"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "India y Tailandia",
+    "salidas": "No especificado",
+    "fecha_salida": "Julio 2026",
+    "no_dias": "No especificado",
+    "precio": "$84,900 MXN",
+    "transporte": "Vuelo redondo",
+    "incluye": [
+      "Vuelo redondo",
+      "Hospedaje",
+      "Traslados",
+      "Staff"
+    ],
+    "lugares": [
+      "India",
+      "Tailandia"
+    ],
+    "requisitos": [],
+    "reserva_con": "Aparta desde $5,000 MXN"
+  },
+  {
+    "tipo": "internacional",
+    "destino": "Disney",
+    "salidas": "No especificado",
+    "fecha_salida": "No especificado",
+    "no_dias": "No especificado",
+    "precio": "No especificado",
+    "transporte": "No especificado",
+    "incluye": [
+      "Cotización de viaje a Disney"
+    ],
+    "lugares": [
+      "Disney Orlando",
+      "Disney Tokio",
+      "Disney París"
+    ],
+    "requisitos": [],
+    "reserva_con": "No especificado"
   }
-  
+
 ]

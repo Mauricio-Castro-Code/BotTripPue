@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -26,7 +27,7 @@ from data.paquetes import (
     REQUISITOS,
     get_contexto_paquetes,
     get_resumen_nacionales,
-    get_resumen_internacionales,
+    get_top10_internacionales,
 )
 
 logger = logging.getLogger(__name__)
@@ -102,15 +103,21 @@ IMPORTANTE: Nunca incluyas links de contacto ni menciones al asesor en tu respue
 _CONTEXTO_POR_ESTADO: dict[str, str] = {
     "chat_nacional": (
         "El cliente está interesado en viajes NACIONALES (Puebla Travel Trips). "
-        "Si pregunta por un destino del catálogo, da todos los detalles: fechas, precio, qué incluye, anticipo requerido. "
-        "Si pregunta por un destino fuera del catálogo, dile que no tienes esa información disponible y sugiere los destinos del catálogo. "
-        "Responde SOLO con información del destino. No incluyas links ni menciones al asesor."
+        "Ya se le preguntó qué tipo de viaje le interesa. Sigue estas reglas:\n"
+        "1. Si menciona una categoría (playa, pueblo mágico, aventura, montaña, etc.) → muéstrale ÚNICAMENTE los destinos del catálogo que encajen, en lista breve con destino, fecha y precio.\n"
+        "2. Si dice 'ver todos' o similar → muestra todos los destinos nacionales disponibles.\n"
+        "3. Si menciona un destino específico que SÍ está en el catálogo → da todos los detalles: fechas, precio, duración, qué incluye, anticipo requerido.\n"
+        "4. Si menciona un destino que NO está en el catálogo → dile amablemente que por el momento no tenemos ese paquete, pero que un asesor puede cotizárselo.\n"
+        "Responde SOLO con información de destinos. No incluyas links ni menciones al asesor."
     ),
     "chat_internacional": (
         "El cliente está interesado en viajes INTERNACIONALES (LibertYa). "
-        "Si pregunta por un destino del catálogo, da todos los detalles: fechas, precio, qué incluye, anticipo requerido. Recuérdales verificar vigencia del pasaporte. "
-        "Si pregunta por un destino fuera del catálogo, dile que no tienes esa info y sugiere los destinos disponibles. "
-        "Responde SOLO con información del destino. No incluyas links ni menciones al asesor."
+        "Ya se le preguntó qué continente o región le interesa. Sigue estas reglas estrictamente:\n"
+        "1. Si menciona un continente o región (Europa, América, Asia, Caribe, etc.) → muéstrale ÚNICAMENTE los destinos de esa región del catálogo, en formato de lista breve con destino y precio.\n"
+        "2. Si dice 'ver todos', 'todos', 'los más populares', 'los más económicos' o similar → muéstrale una selección de máximo 10 destinos variados del catálogo ordenados de menor a mayor precio.\n"
+        "3. Si menciona un país o destino específico que SÍ está en el catálogo → da todos los detalles: fechas, precio, duración, qué incluye, anticipo requerido. Recuérdales verificar vigencia del pasaporte si aplica.\n"
+        "4. Si menciona un país que NO está en el catálogo → dile amablemente que por el momento no tenemos ese tour disponible, pero que un asesor puede cotizárselo con gusto.\n"
+        "Responde SOLO con información de destinos. No incluyas links ni menciones al asesor."
     ),
     "chat_cliente": (
         "El cliente ya tiene una compra o pregunta sobre pagos, requisitos o viajes grupales. "
@@ -171,21 +178,22 @@ def _mensaje_derivar(estado: str) -> str:
     )
 
 
-_KEYWORDS_OPCION: dict[str, set[str]] = {
-    "1": {"1", "nacional", "nacionales", "viajes nacionales", "viaje nacional", "mexico", "méxico", "puebla travel"},
-    "2": {"2", "internacional", "internacionales", "viajes internacionales", "viaje internacional", "extranjero", "fuera del pais", "fuera del país", "libertya"},
-    "3": {"3", "aparte", "aparté", "ya aparte", "ya aparté", "soy cliente", "cliente", "mi viaje", "mi reserva"},
-    "4": {"4", "precio", "precios", "pago", "pagos", "costo", "costos", "cuanto cuesta", "cuánto cuesta", "formas de pago",
+_KEYWORDS_OPCION: dict[str, list[str]] = {
+    "2": ["2", "internacional", "internacionales", "viajes internacionales", "viaje internacional", "extranjero", "fuera del pais", "fuera del país", "libertya"],
+    "1": ["1", "nacional", "nacionales", "viajes nacionales", "viaje nacional", "mexico", "méxico", "puebla travel"],
+    "3": ["3", "aparte", "aparté", "ya aparte", "ya aparté", "soy cliente", "cliente", "mi viaje", "mi reserva"],
+    "4": ["4", "precio", "precios", "pago", "pagos", "costo", "costos", "cuanto cuesta", "cuánto cuesta", "formas de pago",
           "requisito", "requisitos", "documentos", "pasaporte", "visa",
-          "grupo", "grupos", "grupal", "especial", "empresa", "boda", "xv", "quince"},
+          "grupo", "grupos", "grupal", "especial", "empresa", "boda", "xv", "quince"],
 }
 
 
 def detectar_opcion_menu(texto: str) -> str | None:
     t = texto.strip().lower()
     for opcion, keywords in _KEYWORDS_OPCION.items():
-        if any(kw in t for kw in keywords):
-            return opcion
+        for kw in keywords:
+            if re.search(r"\b" + re.escape(kw) + r"\b", t):
+                return opcion
     return None
 
 
@@ -280,11 +288,33 @@ _FUNCION_RESPONDER = {
 }
 
 
+_PREGUNTA_NACIONAL = (
+    "¡Perfecto! 🇲🇽✈️ Tenemos salidas a distintos destinos dentro de México.\n\n"
+    "¿Qué tipo de viaje te interesa?\n\n"
+    "🏖️ *Playa* — Huatulco, Riviera Maya, Puerto Vallarta...\n"
+    "🏘️ *Pueblo Mágico* — Destinos coloniales y con encanto\n"
+    "🏔️ *Aventura / Naturaleza* — Ecoturismo, senderismo, cascadas...\n"
+    "⭐ *Ver todos los disponibles*\n\n"
+    "¡O dime directamente el destino que tienes en mente! 😊"
+)
+
+_PREGUNTA_CONTINENTE = (
+    "¡Excelente elección! 🌎✈️ Tenemos destinos en varios continentes y regiones.\n\n"
+    "¿Qué región te llama más la atención?\n\n"
+    "🌍 *Europa* — España, Francia, Italia, Alemania, Marruecos...\n"
+    "🌎 *América* — Colombia, Costa Rica, Panamá, Patagonia, Perú...\n"
+    "🌏 *Asia / Oceanía* — Japón, Tailandia, India, Australia...\n"
+    "🏝️ *Caribe* — Jamaica, Punta Cana, Cruceros...\n"
+    "⭐ *Ver los más populares* — Te muestro una selección de los más solicitados\n\n"
+    "¡O dime directamente el destino o país que tienes en mente! 😊"
+)
+
+
 def get_respuesta_opcion(opcion: str) -> str:
     if opcion == "1":
         return get_resumen_nacionales()
     if opcion == "2":
-        return get_resumen_internacionales()
+        return get_top10_internacionales()
     return _RESPUESTAS_FIJAS.get(opcion, "")
 
 
@@ -414,8 +444,8 @@ def enviar_botones_seguimiento_1d(telefono: str) -> None:
     })
 
 
-def enviar_seguimiento_3d(telefono: str) -> None:
-    enviar_mensaje_texto(telefono, _MENSAJE_SEGUIMIENTO_3D)
+def enviar_seguimiento_3d(telefono: str, estado: str = "chat_internacional") -> None:
+    enviar_mensaje_texto(telefono, _mensaje_seguimiento_3d(estado))
 
 
 def manejar_boton(db: Session, telefono: str, boton_id: str) -> None:

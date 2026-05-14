@@ -53,6 +53,18 @@ def get_resumen_nacionales() -> str:
 def get_resumen_internacionales() -> str:
     return _resumen_por_tipo("internacional")
 
+def get_top10_internacionales() -> str:
+    viajes = [v for v in _leer_viajes() if v.get("tipo") == "internacional"][:10]
+    if not viajes:
+        return "Por el momento no tenemos paquetes internacionales disponibles. Pronto habrá novedades. 😊"
+    lineas = [f"• *{v['destino']}* — {v['precio']}" for v in viajes]
+    return (
+        "🌎 *Top destinos internacionales disponibles:*\n\n"
+        + "\n".join(lineas)
+        + "\n\n¿Cuál te llama la atención? Escríbeme el nombre y te doy todos los detalles. 😊\n"
+        "¿Tienes un destino en mente que no está en la lista? ¡Pregúntame igual! 📲"
+    )
+
 def get_contexto_paquetes() -> str:
     return _detalle_completo()
 
