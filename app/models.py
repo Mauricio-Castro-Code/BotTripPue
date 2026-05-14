@@ -27,5 +27,6 @@ class Lead(Base):
     telefono        = Column(String(20), nullable=False, unique=True)
     nombre          = Column(String(200))
     destino_interes = Column(String(200))
+    estatus         = Column(String(30), nullable=False, server_default=text("'nuevo'"))
     created_at      = Column(DateTime(timezone=True), nullable=False, server_default=text("NOW()"))
     updated_at      = Column(DateTime(timezone=True), nullable=False, server_default=text("NOW()"))

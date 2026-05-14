@@ -25,6 +25,7 @@ from data.paquetes import (
     METODOS_PAGO,
     REQUISITOS,
     get_contexto_paquetes,
+    get_resumen_nacionales,
     get_resumen_internacionales,
 )
 
@@ -35,17 +36,17 @@ _openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
 META_API_BASE = "https://graph.facebook.com/v25.0"
 _MAX_HISTORIAL = 20
 
+NUMERO_ASESOR_NACIONAL       = "522212664376"   # Puebla Travel Trips
+NUMERO_ASESOR_INTERNACIONAL  = "522222002327"   # LibertYa
+
 # ─── Menú ─────────────────────────────────────────────────────────────────────
 
 _MENU_OPCIONES = (
     "¿En qué te podemos ayudar hoy?\n\n"
-    "1️⃣ Viajes nacionales\n"
-    "2️⃣ Viajes internacionales\n"
+    "1️⃣ Viajes nacionales *(Puebla Travel Trips)*\n"
+    "2️⃣ Viajes internacionales *(LibertYa)*\n"
     "3️⃣ Ya aparté un viaje / soy cliente\n"
-    "4️⃣ Precios y formas de pago\n"
-    "5️⃣ Requisitos para viajar\n"
-    "6️⃣ Viajes en grupo o especiales\n"
-    "7️⃣ Hablar con un asesor\n\n"
+    "4️⃣ Pagos, requisitos y más información\n\n"
     "Responde con el número de tu opción 😊"
 )
 
@@ -69,31 +70,21 @@ _RESPUESTAS_FIJAS: dict[str, str] = {
         "¡Claro, con gusto te ayudo! 😊\n\n"
         "¿Sobre qué viaje tienes una duda y en qué te puedo orientar?"
     ),
-    "4": METODOS_PAGO,
-    "5": REQUISITOS,
-    "6": (
-        "¡Qué emocionante! 🎉 Los viajes grupales son nuestra especialidad.\n\n"
-        "Para prepararte una propuesta personalizada, cuéntame:\n\n"
-        "• ¿Cuántas personas van aproximadamente?\n"
-        "• ¿Cuál es la ocasión? (boda, empresa, XV años, grupo de amigos...)\n"
-        "• ¿Tienen algún destino en mente?\n"
-        "• ¿Manejan fechas tentativas?"
-    ),
-    "7": (
-        "¡Con gusto! 😊 Escríbele directamente a nuestro asesor por WhatsApp:\n\n"
-        "👉 https://wa.me/522222002327\n\n"
-        "Te atenderá personalmente a la brevedad. ✈️"
+    "4": (
+        METODOS_PAGO
+        + "\n\n"
+        + REQUISITOS
+        + "\n\n"
+        "📌 *¿Viaje grupal?* (empresa, boda, XV años, amigos)\n"
+        "Cuéntanos destino, número de personas y fechas tentativas y te preparamos una propuesta personalizada. 🎉"
     ),
 }
 
 _ESTADO_POR_OPCION: dict[str, str] = {
-    "1": "menu",
+    "1": "chat_nacional",
     "2": "chat_internacional",
     "3": "chat_cliente",
-    "4": "menu",
-    "5": "menu",
-    "6": "chat_grupo",
-    "7": "menu",
+    "4": "chat_cliente",
 }
 
 # Estados que continúan con OpenAI después de la respuesta inicial
@@ -102,32 +93,34 @@ _ESTADOS_CON_IA = {"chat_nacional", "chat_internacional", "chat_cliente", "chat_
 # ─── Sistema prompt OpenAI ────────────────────────────────────────────────────
 
 _SISTEMA_BASE = """
-Eres un asistente de WhatsApp de *LibertYa*, agencia de viajes.
+Eres un asistente de WhatsApp de la familia de agencias *Puebla Travel Trips* (viajes nacionales) y *LibertYa* (viajes internacionales), con base en Puebla, México.
 Responde siempre en español, de forma amable y concisa (máximo 3 párrafos cortos).
 No inventes información que no esté en los paquetes disponibles.
-Tu objetivo es informar al cliente. Cuando muestre interés real en reservar o apartar un lugar, invítalo a contactar a nuestro asesor por WhatsApp: https://wa.me/522222002327
+Cuando el cliente muestre interés real en reservar o apartar un lugar:
+- Si es viaje NACIONAL → dirígelo al asesor de Puebla Travel Trips: https://wa.me/522212664376
+- Si es viaje INTERNACIONAL → dirígelo al asesor de LibertYa: https://wa.me/522222002327
 """
 
 _CONTEXTO_POR_ESTADO: dict[str, str] = {
     "chat_nacional": (
-        "El cliente está interesado en viajes NACIONALES. "
-        "Después de informar sobre un paquete, pregunta cuántas personas viajan "
-        "y si tienen fechas definidas. Eso ayuda a personalizar la propuesta."
+        "El cliente está interesado en viajes NACIONALES (Puebla Travel Trips). "
+        "Primero muéstrale los destinos nacionales del catálogo y pregúntale cuál le interesa. "
+        "Si pregunta por un destino del catálogo, da todos los detalles (fechas, precio, qué incluye). "
+        "Si quiere un viaje personalizado fuera del catálogo, pídele destino y fechas tentativas. "
+        "Cuando muestre intención de reservar, dile que escriba al asesor: https://wa.me/522212664376"
     ),
     "chat_internacional": (
-        "El cliente está interesado en viajes INTERNACIONALES. "
-        "Después de informar sobre un paquete, pregunta cuántas personas viajan "
-        "y si tienen fechas definidas. Recuérdales verificar la vigencia del pasaporte."
+        "El cliente está interesado en viajes INTERNACIONALES (LibertYa). "
+        "Primero muéstrale los destinos internacionales del catálogo y pregúntale cuál le interesa. "
+        "Si pregunta por un destino del catálogo, da todos los detalles (fechas, precio, qué incluye). "
+        "Si quiere un destino fuera del catálogo, pídele destino y fechas tentativas. Recuérdales verificar el pasaporte. "
+        "Cuando muestre intención de reservar, dile que escriba al asesor: https://wa.me/522222002327"
     ),
     "chat_cliente": (
-        "El cliente ya tiene una compra con Puebla Travel Trips. "
-        "Ayúdale con su duda usando la información disponible. "
-        "Si no puedes resolverla, dile que un asesor lo contactará a la brevedad."
-    ),
-    "chat_grupo": (
-        "El cliente está interesado en un viaje grupal o especial (boda, empresa, XV años, etc.). "
-        "Recaba la información necesaria: cuántas personas, ocasión, destino y fechas tentativas. "
-        "Dile que con esos datos un asesor le preparará una propuesta personalizada."
+        "El cliente ya tiene una compra o tiene preguntas sobre pagos, requisitos o viajes grupales. "
+        "Ayúdale con la información disponible. "
+        "Para dudas de reserva nacional escríbele al asesor: https://wa.me/522212664376 "
+        "Para dudas de reserva internacional: https://wa.me/522222002327"
     ),
 }
 
@@ -155,14 +148,42 @@ def es_despedida(texto: str) -> bool:
     return any(kw in texto.strip().lower() for kw in _KEYWORDS_DESPEDIDA)
 
 
+_KEYWORDS_NO_INTERESA = {
+    "no me interesa", "no interesa", "ya no me interesa", "no gracias", "no, gracias",
+    "cancelar", "no quiero", "no necesito", "no por ahora", "tal vez después",
+    "tal vez despues", "no por el momento", "dejame", "déjame", "no es lo que busco",
+}
+
+
+def es_no_interesado(texto: str) -> bool:
+    return any(kw in texto.strip().lower() for kw in _KEYWORDS_NO_INTERESA)
+
+
+def _numero_asesor(estado: str) -> str:
+    return NUMERO_ASESOR_NACIONAL if estado == "chat_nacional" else NUMERO_ASESOR_INTERNACIONAL
+
+
+def _mensaje_derivar(estado: str) -> str:
+    if estado == "chat_nacional":
+        nombre = "Puebla Travel Trips"
+        numero = NUMERO_ASESOR_NACIONAL
+    else:
+        nombre = "LibertYa"
+        numero = NUMERO_ASESOR_INTERNACIONAL
+    return (
+        f"¡Con gusto! 😊 Escríbele directamente al asesor de *{nombre}*:\n\n"
+        f"👉 https://wa.me/{numero}\n\n"
+        "Te atenderá personalmente a la brevedad. ✈️"
+    )
+
+
 _KEYWORDS_OPCION: dict[str, set[str]] = {
-    "2": {"2", "internacional", "internacionales", "viajes internacionales", "viaje internacional", "extranjero", "fuera del pais", "fuera del país"},
-    "1": {"1", "nacional", "nacionales", "viajes nacionales", "viaje nacional", "mexico", "méxico"},
+    "1": {"1", "nacional", "nacionales", "viajes nacionales", "viaje nacional", "mexico", "méxico", "puebla travel"},
+    "2": {"2", "internacional", "internacionales", "viajes internacionales", "viaje internacional", "extranjero", "fuera del pais", "fuera del país", "libertya"},
     "3": {"3", "aparte", "aparté", "ya aparte", "ya aparté", "soy cliente", "cliente", "mi viaje", "mi reserva"},
-    "4": {"4", "precio", "precios", "pago", "pagos", "costo", "costos", "cuanto cuesta", "cuánto cuesta", "formas de pago"},
-    "5": {"5", "requisito", "requisitos", "documentos", "pasaporte", "visa", "necesito"},
-    "6": {"6", "grupo", "grupos", "grupal", "grupales", "especial", "especiales", "empresa", "boda", "xv", "quince"},
-    "7": {"7", "asesor", "agente", "humano", "persona", "hablar con", "contactar"},
+    "4": {"4", "precio", "precios", "pago", "pagos", "costo", "costos", "cuanto cuesta", "cuánto cuesta", "formas de pago",
+          "requisito", "requisitos", "documentos", "pasaporte", "visa",
+          "grupo", "grupos", "grupal", "especial", "empresa", "boda", "xv", "quince", "info"},
 }
 
 
@@ -224,15 +245,18 @@ def guardar_o_actualizar_lead(
     telefono: str,
     nombre: str | None = None,
     destino: str | None = None,
+    estatus: str | None = None,
 ) -> None:
     lead = db.query(Lead).filter(Lead.telefono == telefono).first()
     if not lead:
-        lead = Lead(telefono=telefono)
+        lead = Lead(telefono=telefono, estatus="nuevo")
         db.add(lead)
     if nombre and not lead.nombre:
         lead.nombre = nombre
     if destino:
         lead.destino_interes = destino
+    if estatus:
+        lead.estatus = estatus
     db.commit()
 
 
@@ -262,17 +286,9 @@ _FUNCION_RESPONDER = {
 }
 
 
-_RESPUESTA_NACIONALES = (
-    "¡Claro! 🏖️ Para información sobre viajes nacionales, escríbenos directamente "
-    "al bot de informes de *Puebla Travel Trips*:\n\n"
-    "👉 https://wa.me/522222002327\n\n"
-    "Ahí encontrarás destinos, precios y disponibilidad. ✈️"
-)
-
-
 def get_respuesta_opcion(opcion: str) -> str:
     if opcion == "1":
-        return _RESPUESTA_NACIONALES
+        return get_resumen_nacionales()
     if opcion == "2":
         return get_resumen_internacionales()
     return _RESPUESTAS_FIJAS.get(opcion, "")
@@ -332,14 +348,15 @@ def enviar_mensaje_texto(telefono: str, mensaje: str) -> None:
 
 # ─── Follow-up automático ─────────────────────────────────────────────────────
 
-NUMERO_ASESOR = "522222002327"
-
-_MENSAJE_SEGUIMIENTO_3D = (
-    "Hola 👋 Tu conversación con *LibertYa* se cerrará en breve.\n\n"
-    "Si sigues interesado en planear tu viaje, escríbele a nuestro asesor:\n"
-    f"👉 https://wa.me/{NUMERO_ASESOR}\n\n"
-    "Si ya no necesitas información, puedes ignorar este mensaje. ¡Hasta pronto! ✈️"
-)
+def _mensaje_seguimiento_3d(estado: str) -> str:
+    numero = _numero_asesor(estado)
+    nombre = "Puebla Travel Trips" if estado == "chat_nacional" else "LibertYa"
+    return (
+        f"Hola 👋 Tu conversación con *{nombre}* se cerrará en breve.\n\n"
+        "Si sigues interesado en planear tu viaje, escríbele a nuestro asesor:\n"
+        f"👉 https://wa.me/{numero}\n\n"
+        "Si ya no necesitas información, puedes ignorar este mensaje. ¡Hasta pronto! ✈️"
+    )
 
 
 def enviar_catalogo_con_botones(telefono: str, catalogo: str) -> None:
@@ -389,25 +406,21 @@ def enviar_seguimiento_3d(telefono: str) -> None:
     enviar_mensaje_texto(telefono, _MENSAJE_SEGUIMIENTO_3D)
 
 
-_MENSAJE_ASESOR = (
-    "¡Con gusto! 😊 Escríbele directamente a nuestro asesor por WhatsApp:\n\n"
-    f"👉 https://wa.me/{NUMERO_ASESOR}\n\n"
-    "Te atenderá personalmente a la brevedad. ✈️"
-)
-
-
 def manejar_boton(db: Session, telefono: str, boton_id: str) -> None:
     sesion = obtener_o_crear_sesion(db, telefono)
+    estado = get_estado(list(sesion.historial or []))
 
     if boton_id in ("btn_no_interes", "btn_terminar"):
         guardar_historial(db, sesion, set_estado([], "cerrada"))
         sesion.sesion_cerrada = True
         db.commit()
+        guardar_o_actualizar_lead(db, telefono, estatus="no_interesado")
         enviar_mensaje_texto(telefono, _MENSAJE_DESPEDIDA)
 
     elif boton_id in ("btn_asesor", "btn_reservar"):
-        guardar_historial(db, sesion, list(sesion.historial or []))
-        enviar_mensaje_texto(telefono, _MENSAJE_ASESOR)
+        estatus_derivado = "derivado_nacional" if estado == "chat_nacional" else "derivado_internacional"
+        guardar_o_actualizar_lead(db, telefono, estatus=estatus_derivado)
+        enviar_mensaje_texto(telefono, _mensaje_derivar(estado))
 
     elif boton_id == "btn_seguir":
         guardar_historial(db, sesion, set_estado(mensajes_openai(list(sesion.historial or [])), "menu"))
@@ -421,7 +434,7 @@ def procesar_seguimientos(db: Session) -> None:
         db.query(SesionIA)
         .filter(
             SesionIA.sesion_cerrada == False,  # noqa: E712
-            SesionIA.ultimo_mensaje < ahora - timedelta(hours=24),
+            SesionIA.ultimo_mensaje < ahora - timedelta(hours=8),
             or_(
                 SesionIA.seguimiento_1h.is_(None),
                 SesionIA.seguimiento_1h < SesionIA.ultimo_mensaje,
@@ -435,7 +448,7 @@ def procesar_seguimientos(db: Session) -> None:
             sesion.seguimiento_1h = ahora
             db.commit()
         except Exception as exc:
-            logger.error("Error seguimiento 1h a %s: %s", sesion.telefono_cliente, exc)
+            logger.error("Error seguimiento 8h a %s: %s", sesion.telefono_cliente, exc)
 
     sesiones_3d = (
         db.query(SesionIA)
@@ -449,7 +462,8 @@ def procesar_seguimientos(db: Session) -> None:
     )
     for sesion in sesiones_3d:
         try:
-            enviar_seguimiento_3d(sesion.telefono_cliente)
+            estado_sesion = get_estado(list(sesion.historial or []))
+            enviar_mensaje_texto(sesion.telefono_cliente, _mensaje_seguimiento_3d(estado_sesion))
             sesion.seguimiento_3d = ahora
             db.commit()
         except Exception as exc:

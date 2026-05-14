@@ -13,6 +13,7 @@ CREATE TABLE leads (
     telefono        VARCHAR(20)  NOT NULL UNIQUE,
     nombre          VARCHAR(200),
     destino_interes VARCHAR(200),
+    estatus         VARCHAR(30)  NOT NULL DEFAULT 'nuevo',
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );

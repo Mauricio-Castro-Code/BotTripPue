@@ -27,6 +27,7 @@ from .services import (
     enviar_catalogo_con_botones,
     enviar_mensaje_texto,
     es_despedida,
+    es_no_interesado,
     es_saludo,
     generar_respuesta_ia,
     get_estado,
@@ -113,6 +114,16 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
 
     guardar_o_actualizar_lead(db, telefono)
 
+    # No interesado → cerrar sesión sin molestar más
+    if es_no_interesado(texto):
+        sesion = obtener_o_crear_sesion(db, telefono)
+        guardar_historial(db, sesion, set_estado([], "cerrada"))
+        sesion.sesion_cerrada = True
+        db.commit()
+        guardar_o_actualizar_lead(db, telefono, estatus="no_interesado")
+        enviar_mensaje_texto(telefono, _MENSAJE_DESPEDIDA)
+        return
+
     # Despedida → cerrar sesión y despedirse
     if es_despedida(texto):
         sesion = obtener_o_crear_sesion(db, telefono)
@@ -138,7 +149,8 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
         nuevo_estado = _ESTADO_POR_OPCION[opcion]
         msgs = mensajes_openai(historial) + [{"role": "assistant", "content": respuesta}]
         guardar_historial(db, sesion, set_estado(msgs, nuevo_estado))
-        if opcion == "2":
+        if opcion in ("1", "2"):
+            guardar_o_actualizar_lead(db, telefono, estatus="informado")
             enviar_catalogo_con_botones(telefono, respuesta)
         else:
             enviar_mensaje_texto(telefono, respuesta)
@@ -161,3 +173,14 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
 @app.get("/health")
 def health_check():
     return {"status": "ok", "service": "PueblTrips Bot"}
+
+
+@app.post("/cron/recordatorio")
+def cron_recordatorio(
+    token: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    if token != settings.WHATSAPP_VERIFY_TOKEN:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    procesar_seguimientos(db)
+    return {"status": "ok"}
