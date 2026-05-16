@@ -17,13 +17,13 @@ def _leer_viajes() -> list[dict]:
 def _resumen_por_tipo(tipo: str) -> str:
     viajes = [v for v in _leer_viajes() if v.get("tipo") == tipo]
     if not viajes:
-        return "Por el momento no tenemos paquetes disponibles en esta categoría. Pronto habrá novedades. 😊"
+        return "Por el momento no tenemos paquetes disponibles en esta categoría. Pronto traeremos novedades. 😊"
     lineas = [f"• *{v['destino']}* — {v['fecha_salida']} ({v['no_dias']})" for v in viajes]
     etiqueta = "🇲🇽 *Viajes Nacionales disponibles:*" if tipo == "nacional" else "🌎 *Viajes Internacionales disponibles:*"
     return (
         f"{etiqueta}\n\n"
         + "\n".join(lineas)
-        + "\n\n¿Te interesa alguno? Escríbeme *\"más info de [destino]\"* y te mando todos los detalles. 😊\n"
+        + "\n\n¿Te interesa alguno? Escríbeme *\"más info de [destino]\"* y te mando todos los detalles. 😉\n"
         "Si viste algún destino en nuestras redes, ¡también pregúntame por él! 📲"
     )
 

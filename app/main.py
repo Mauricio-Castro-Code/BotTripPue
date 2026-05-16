@@ -134,11 +134,15 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
     # Saludo → reiniciar sesión y mostrar menú principal
     if es_saludo(texto):
         sesion = obtener_o_crear_sesion(db, telefono)
+        sesion.sesion_cerrada = False
         guardar_historial(db, sesion, set_estado([], "menu"))
         enviar_mensaje_texto(telefono, _MENSAJE_BIENVENIDA)
         return
 
     sesion = obtener_o_crear_sesion(db, telefono)
+    if sesion.sesion_cerrada:
+        sesion.sesion_cerrada = False
+        db.commit()
     historial = list(sesion.historial or [])
     estado = get_estado(historial)
 
@@ -167,7 +171,7 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
     # Nada reconocido → pedir que elijan del menú
     enviar_mensaje_texto(
         telefono,
-        "¡Hmm, no entendí bien! 😊 Por favor elige una opción o cuéntame qué duda tienes:\n\n"
+        "Vaya, no entendí bien! 🤖 Por favor elige una opción del menú principal o cuéntame acerca de la duda que tienes:\n\n"
         + _MENU_OPCIONES,
     )
 

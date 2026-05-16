@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -48,14 +47,14 @@ _MENU_OPCIONES = (
     "2️⃣ Viajes internacionales *(LibertYa)*\n"
     "3️⃣ Ya aparté un viaje / soy cliente\n"
     "4️⃣ Pagos, requisitos y más información\n\n"
-    "Responde con el número de tu opción 😊"
+    "Responde con el número de tu opción 👇🏼"
 )
 
 _MENSAJE_BIENVENIDA = (
     "¡Saludos viajero! 🌍✈️ Bienvenido a *LibertYa*, "
-    "tu agencia de viajes de confianza.\n\n"
+    "la mejor agencia de viajes internacionales.\n\n"
     "Soy tu asistente virtual y estoy aquí para ayudarte "
-    "a planear tu próxima aventura. 😊\n\n"
+    "a planear tu próxima aventura. 🧳🛫\n\n"
     + _MENU_OPCIONES
 )
 
@@ -63,7 +62,7 @@ _MENSAJE_DESPEDIDA = (
     "¡Hasta luego, viajero! 👋✈️\n\n"
     "Fue un placer atenderte. Cuando quieras planear tu próxima aventura, "
     "aquí estaremos. ¡Que tengas un excelente día! 🌟\n\n"
-    "*LibertYa* — Tu agencia de confianza 😊"
+    "*LibertYa* — Tu agencia de confianza "
 )
 
 _RESPUESTAS_FIJAS: dict[str, str] = {
@@ -178,23 +177,36 @@ def _mensaje_derivar(estado: str) -> str:
     )
 
 
-_KEYWORDS_OPCION: dict[str, list[str]] = {
-    "2": ["2", "internacional", "internacionales", "viajes internacionales", "viaje internacional", "extranjero", "fuera del pais", "fuera del país", "libertya"],
-    "1": ["1", "nacional", "nacionales", "viajes nacionales", "viaje nacional", "mexico", "méxico", "puebla travel"],
-    "3": ["3", "aparte", "aparté", "ya aparte", "ya aparté", "soy cliente", "cliente", "mi viaje", "mi reserva"],
-    "4": ["4", "precio", "precios", "pago", "pagos", "costo", "costos", "cuanto cuesta", "cuánto cuesta", "formas de pago",
-          "requisito", "requisitos", "documentos", "pasaporte", "visa",
-          "grupo", "grupos", "grupal", "especial", "empresa", "boda", "xv", "quince"],
-}
+_PROMPT_CLASIFICAR = """Eres un clasificador de intenciones para una agencia de viajes en México.
+
+El cliente puede escribir de cualquier forma (con errores, informal, incompleto). Tu trabajo es identificar a cuál de estas opciones corresponde su mensaje:
+
+1 = Quiere información sobre viajes NACIONALES (dentro de México: playas, pueblos mágicos, ciudades mexicanas, Cancún, Huatulco, CDMX, etc.)
+2 = Quiere información sobre viajes INTERNACIONALES (fuera de México: Europa, Caribe, Asia, EE.UU., cruceros, etc.)
+3 = Ya apartó o compró un viaje, o es cliente con reserva activa
+4 = Pregunta sobre precios, pagos, requisitos, documentos, grupos, bodas, XV años o viajes especiales
+
+Si el mensaje NO encaja claramente con ninguna opción, responde "ninguna".
+
+Responde ÚNICAMENTE con: 1, 2, 3, 4, o ninguna. Sin explicación."""
 
 
 def detectar_opcion_menu(texto: str) -> str | None:
-    t = texto.strip().lower()
-    for opcion, keywords in _KEYWORDS_OPCION.items():
-        for kw in keywords:
-            if re.search(r"\b" + re.escape(kw) + r"\b", t):
-                return opcion
-    return None
+    try:
+        response = _openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": _PROMPT_CLASIFICAR},
+                {"role": "user", "content": texto},
+            ],
+            max_tokens=5,
+            temperature=0,
+        )
+        resultado = response.choices[0].message.content.strip().lower()
+        return resultado if resultado in ("1", "2", "3", "4") else None
+    except Exception as exc:
+        logger.error("Error clasificando opción con IA: %s", exc)
+        return None
 
 
 # ─── Estado de sesión ─────────────────────────────────────────────────────────
