@@ -21,14 +21,12 @@ from .services import (
     _MENSAJE_BIENVENIDA,
     _MENSAJE_DESPEDIDA,
     _MENU_OPCIONES,
-    _ESTADO_POR_OPCION,
+    _ESTADO_POR_INTENCION,
     _ESTADOS_CON_IA,
-    detectar_opcion_menu,
+    _OPCION_POR_INTENCION,
+    clasificar_intencion,
     enviar_botones_reserva,
     enviar_mensaje_texto,
-    es_despedida,
-    es_no_interesado,
-    es_saludo,
     generar_respuesta_ia,
     get_estado,
     get_respuesta_opcion,
@@ -114,31 +112,6 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
 
     guardar_o_actualizar_lead(db, telefono)
 
-    # No interesado → cerrar sesión sin molestar más
-    if es_no_interesado(texto):
-        sesion = obtener_o_crear_sesion(db, telefono)
-        guardar_historial(db, sesion, set_estado([], "cerrada"))
-        sesion.sesion_cerrada = True
-        db.commit()
-        guardar_o_actualizar_lead(db, telefono, estatus="no_interesado")
-        enviar_mensaje_texto(telefono, _MENSAJE_DESPEDIDA)
-        return
-
-    # Despedida → cerrar sesión y despedirse
-    if es_despedida(texto):
-        sesion = obtener_o_crear_sesion(db, telefono)
-        guardar_historial(db, sesion, set_estado([], "menu"))
-        enviar_mensaje_texto(telefono, _MENSAJE_DESPEDIDA)
-        return
-
-    # Saludo → reiniciar sesión y mostrar menú principal
-    if es_saludo(texto):
-        sesion = obtener_o_crear_sesion(db, telefono)
-        sesion.sesion_cerrada = False
-        guardar_historial(db, sesion, set_estado([], "menu"))
-        enviar_mensaje_texto(telefono, _MENSAJE_BIENVENIDA)
-        return
-
     sesion = obtener_o_crear_sesion(db, telefono)
     if sesion.sesion_cerrada:
         sesion.sesion_cerrada = False
@@ -146,8 +119,28 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
     historial = list(sesion.historial or [])
     estado = get_estado(historial)
 
-    # Conversación activa → OpenAI responde y después aparecen los botones
-    if estado in _ESTADOS_CON_IA:
+    intencion = clasificar_intencion(texto, estado)
+    logger.info("Intención de %s (estado=%s): %s", telefono, estado, intencion)
+
+    if intencion == "no_interesado":
+        guardar_historial(db, sesion, set_estado([], "cerrada"))
+        sesion.sesion_cerrada = True
+        db.commit()
+        guardar_o_actualizar_lead(db, telefono, estatus="no_interesado")
+        enviar_mensaje_texto(telefono, _MENSAJE_DESPEDIDA)
+        return
+
+    if intencion == "despedida":
+        guardar_historial(db, sesion, set_estado([], "menu"))
+        enviar_mensaje_texto(telefono, _MENSAJE_DESPEDIDA)
+        return
+
+    if intencion == "saludo":
+        guardar_historial(db, sesion, set_estado([], "menu"))
+        enviar_mensaje_texto(telefono, _MENSAJE_BIENVENIDA)
+        return
+
+    if intencion == "continuar" and estado in _ESTADOS_CON_IA:
         msgs = preparar_historial(mensajes_openai(historial), texto)
         respuesta, nombre, destino = generar_respuesta_ia(msgs, estado)
         msgs.append({"role": "assistant", "content": respuesta})
@@ -157,22 +150,19 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
         enviar_botones_reserva(telefono)
         return
 
-    # Menú principal → detectar opción (solo cuando no hay conversación activa)
-    opcion = detectar_opcion_menu(texto)
-    if opcion:
+    if intencion in _ESTADO_POR_INTENCION:
+        opcion = _OPCION_POR_INTENCION[intencion]
         respuesta = get_respuesta_opcion(opcion)
-        nuevo_estado = _ESTADO_POR_OPCION[opcion]
+        nuevo_estado = _ESTADO_POR_INTENCION[intencion]
         msgs = mensajes_openai(historial) + [{"role": "assistant", "content": respuesta}]
         guardar_historial(db, sesion, set_estado(msgs, nuevo_estado))
         guardar_o_actualizar_lead(db, telefono, estatus="informado")
         enviar_mensaje_texto(telefono, respuesta)
         return
 
-    # Nada reconocido → pedir que elijan del menú
     enviar_mensaje_texto(
         telefono,
-        "Vaya, no entendí bien! 🤖 Por favor elige una opción del menú principal o cuéntame acerca de la duda que tienes:\n\n"
-        + _MENU_OPCIONES,
+        "¡Hmm, no entendí bien! 😊 ¿Sobre qué te puedo ayudar?\n\n" + _MENU_OPCIONES,
     )
 
 

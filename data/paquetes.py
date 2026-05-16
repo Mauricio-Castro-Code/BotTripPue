@@ -18,13 +18,13 @@ def _resumen_por_tipo(tipo: str) -> str:
     viajes = [v for v in _leer_viajes() if v.get("tipo") == tipo]
     if not viajes:
         return "Por el momento no tenemos paquetes disponibles en esta categoría. Pronto traeremos novedades. 😊"
-    lineas = [f"• *{v['destino']}* — {v['fecha_salida']} ({v['no_dias']})" for v in viajes]
+    lineas = [f"• *{v['destino']}* — {v['fecha_salida']}" for v in viajes]
     etiqueta = "🇲🇽 *Viajes Nacionales disponibles:*" if tipo == "nacional" else "🌎 *Viajes Internacionales disponibles:*"
     return (
         f"{etiqueta}\n\n"
         + "\n".join(lineas)
-        + "\n\n¿Te interesa alguno? Escríbeme *\"más info de [destino]\"* y te mando todos los detalles. 😉\n"
-        "Si viste algún destino en nuestras redes, ¡también pregúntame por él! 📲"
+        + "\n\n¿Cuál te llama la atención? Dime el destino y te mando precio, fechas y todo lo que incluye. 😊\n"
+        "¿Viste algo en nuestras redes que no está aquí? ¡También pregúntame! 📲"
     )
 
 
@@ -54,15 +54,23 @@ def get_resumen_internacionales() -> str:
     return _resumen_por_tipo("internacional")
 
 def get_top10_internacionales() -> str:
-    viajes = [v for v in _leer_viajes() if v.get("tipo") == "internacional"][:10]
+    vistos: set[str] = set()
+    viajes = []
+    for v in _leer_viajes():
+        if v.get("tipo") == "internacional" and v["destino"] not in vistos:
+            vistos.add(v["destino"])
+            viajes.append(v)
+        if len(viajes) == 10:
+            break
     if not viajes:
         return "Por el momento no tenemos paquetes internacionales disponibles. Pronto habrá novedades. 😊"
-    lineas = [f"• *{v['destino']}* — {v['precio']}" for v in viajes]
+    lineas = [f"• *{v['destino']}*" for v in viajes]
     return (
-        "🌎 *Top destinos internacionales disponibles:*\n\n"
+        "🌎 *Nuestros destinos internacionales más populares:*\n\n"
         + "\n".join(lineas)
-        + "\n\n¿Cuál te llama la atención? Escríbeme el nombre y te doy todos los detalles. 😊\n"
-        "¿Tienes un destino en mente que no está en la lista? ¡Pregúntame igual! 📲"
+        + "\n\n¿Cuál te llama la atención? ✈️\n"
+        "Dime el destino y te mando fecha, precio y todo lo que incluye. 😊\n"
+        "¿Viste en nuestras redes un destino que no está aquí? ¡Pregúntame igual! 📲"
     )
 
 def get_contexto_paquetes() -> str:

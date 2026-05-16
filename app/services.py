@@ -80,13 +80,6 @@ _RESPUESTAS_FIJAS: dict[str, str] = {
     ),
 }
 
-_ESTADO_POR_OPCION: dict[str, str] = {
-    "1": "chat_nacional",
-    "2": "chat_internacional",
-    "3": "chat_cliente",
-    "4": "chat_cliente",
-}
-
 # Estados que continúan con OpenAI después de la respuesta inicial
 _ESTADOS_CON_IA = {"chat_nacional", "chat_internacional", "chat_cliente", "chat_grupo"}
 
@@ -124,39 +117,56 @@ _CONTEXTO_POR_ESTADO: dict[str, str] = {
     ),
 }
 
-# ─── Keywords ─────────────────────────────────────────────────────────────────
+# ─── Clasificador de intención (OpenAI) ──────────────────────────────────────
 
-_KEYWORDS_SALUDO = {
-    "hola", "buenas", "buenos días", "buenos dias", "buenas tardes",
-    "buenas noches", "hi", "hey", "saludos", "buen día", "buen dia",
-    "inicio", "menu", "menú", "start",
-}
+_PROMPT_INTENT = """\
+Eres el clasificador de intención del bot de WhatsApp de LibertYa, una agencia de viajes.
 
-_KEYWORDS_DESPEDIDA = {
-    "adiós", "adios", "hasta luego", "hasta pronto", "bye", "chao", "chau",
-    "nos vemos", "es todo", "eso es todo", "es todo gracias", "ninguna duda",
-    "no tengo dudas", "no hay dudas", "ya es todo", "gracias por todo",
-    "muchas gracias", "mil gracias", "muy amable", "ya fue todo",
-}
+El cliente puede escribir de cualquier forma: con errores, informal, emojis, oraciones largas o muy cortas.
+
+Clasifica el mensaje en UNA de estas intenciones:
+
+saludo        → El cliente saluda o quiere reiniciar (hola, buenos días, inicio, start…)
+despedida     → Se despide o ya terminó (adiós, bye, hasta luego, es todo, gracias fue todo…)
+no_interesado → Indica que no le interesa o quiere cancelar (no me interesa, no gracias, ya no quiero, cancelar…)
+menu_1        → Pregunta por viajes NACIONALES (dentro de México: playas, pueblos mágicos, Cancún, CDMX…)
+menu_2        → Pregunta por viajes INTERNACIONALES (fuera de México: Europa, Caribe, Asia, cruceros…)
+menu_3        → Ya apartó o compró un viaje, tiene una reserva, es cliente activo
+menu_4        → Pregunta sobre precios, pagos, requisitos, documentos, grupos, bodas, XV años
+continuar     → Cualquier otra cosa: pregunta específica de un destino, comentario, duda, algo que vio en redes
+
+Estado actual de la conversación: {estado}
+
+REGLA CRÍTICA: Si el estado es chat_nacional, chat_internacional, chat_cliente o chat_grupo,
+y el mensaje es una pregunta, comentario o duda sobre un destino o viaje (aunque contenga
+palabras cortas como "hi" o "hey" dentro de una oración en español), devuelve "continuar".
+
+Devuelve ÚNICAMENTE una de estas palabras exactas: saludo, despedida, no_interesado, menu_1, menu_2, menu_3, menu_4, continuar\
+"""
+
+_VALIDAS_INTENT = frozenset({
+    "saludo", "despedida", "no_interesado",
+    "menu_1", "menu_2", "menu_3", "menu_4",
+    "continuar",
+})
 
 
-def es_saludo(texto: str) -> bool:
-    return any(kw in texto.strip().lower() for kw in _KEYWORDS_SALUDO)
-
-
-def es_despedida(texto: str) -> bool:
-    return any(kw in texto.strip().lower() for kw in _KEYWORDS_DESPEDIDA)
-
-
-_KEYWORDS_NO_INTERESA = {
-    "no me interesa", "no interesa", "ya no me interesa", "no gracias", "no, gracias",
-    "cancelar", "no quiero", "no necesito", "no por ahora", "tal vez después",
-    "tal vez despues", "no por el momento", "dejame", "déjame", "no es lo que busco",
-}
-
-
-def es_no_interesado(texto: str) -> bool:
-    return any(kw in texto.strip().lower() for kw in _KEYWORDS_NO_INTERESA)
+def clasificar_intencion(texto: str, estado: str) -> str:
+    try:
+        response = _openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": _PROMPT_INTENT.format(estado=estado)},
+                {"role": "user", "content": texto},
+            ],
+            max_tokens=10,
+            temperature=0,
+        )
+        resultado = response.choices[0].message.content.strip().lower()
+        return resultado if resultado in _VALIDAS_INTENT else "continuar"
+    except Exception as exc:
+        logger.error("Error clasificando intención: %s", exc)
+        return "continuar"
 
 
 def _numero_asesor(estado: str) -> str:
@@ -177,36 +187,19 @@ def _mensaje_derivar(estado: str) -> str:
     )
 
 
-_PROMPT_CLASIFICAR = """Eres un clasificador de intenciones para una agencia de viajes en México.
+_ESTADO_POR_INTENCION: dict[str, str] = {
+    "menu_1": "chat_nacional",
+    "menu_2": "chat_internacional",
+    "menu_3": "chat_cliente",
+    "menu_4": "chat_cliente",
+}
 
-El cliente puede escribir de cualquier forma (con errores, informal, incompleto). Tu trabajo es identificar a cuál de estas opciones corresponde su mensaje:
-
-1 = Quiere información sobre viajes NACIONALES (dentro de México: playas, pueblos mágicos, ciudades mexicanas, Cancún, Huatulco, CDMX, etc.)
-2 = Quiere información sobre viajes INTERNACIONALES (fuera de México: Europa, Caribe, Asia, EE.UU., cruceros, etc.)
-3 = Ya apartó o compró un viaje, o es cliente con reserva activa
-4 = Pregunta sobre precios, pagos, requisitos, documentos, grupos, bodas, XV años o viajes especiales
-
-Si el mensaje NO encaja claramente con ninguna opción, responde "ninguna".
-
-Responde ÚNICAMENTE con: 1, 2, 3, 4, o ninguna. Sin explicación."""
-
-
-def detectar_opcion_menu(texto: str) -> str | None:
-    try:
-        response = _openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": _PROMPT_CLASIFICAR},
-                {"role": "user", "content": texto},
-            ],
-            max_tokens=5,
-            temperature=0,
-        )
-        resultado = response.choices[0].message.content.strip().lower()
-        return resultado if resultado in ("1", "2", "3", "4") else None
-    except Exception as exc:
-        logger.error("Error clasificando opción con IA: %s", exc)
-        return None
+_OPCION_POR_INTENCION: dict[str, str] = {
+    "menu_1": "1",
+    "menu_2": "2",
+    "menu_3": "3",
+    "menu_4": "4",
+}
 
 
 # ─── Estado de sesión ─────────────────────────────────────────────────────────
@@ -402,37 +395,8 @@ def enviar_botones_reserva(telefono: str) -> None:
 
 # ─── Follow-up automático ─────────────────────────────────────────────────────
 
-def _mensaje_seguimiento_3d(estado: str) -> str:
-    numero = _numero_asesor(estado)
-    nombre = "Puebla Travel Trips" if estado == "chat_nacional" else "LibertYa"
-    return (
-        f"Hola 👋 Tu conversación con *{nombre}* se cerrará en breve.\n\n"
-        "Si sigues interesado en planear tu viaje, escríbele a nuestro asesor:\n"
-        f"👉 https://wa.me/{numero}\n\n"
-        "Si ya no necesitas información, puedes ignorar este mensaje. ¡Hasta pronto! ✈️"
-    )
-
-
-def enviar_catalogo_con_botones(telefono: str, catalogo: str) -> None:
-    enviar_mensaje_texto(telefono, catalogo)
-    _post_whatsapp({
-        "messaging_product": "whatsapp",
-        "to": telefono,
-        "type": "interactive",
-        "interactive": {
-            "type": "button",
-            "body": {"text": "¿Te interesa algún destino? 😊"},
-            "action": {
-                "buttons": [
-                    {"type": "reply", "reply": {"id": "btn_reservar", "title": "Quiero reservar"}},
-                    {"type": "reply", "reply": {"id": "btn_terminar", "title": "Terminar chat"}},
-                ]
-            },
-        },
-    })
-
-
-def enviar_botones_seguimiento_1d(telefono: str) -> None:
+def _enviar_seguimiento_8h(telefono: str) -> None:
+    """Primer aviso a las 8h de inactividad — invita a reservar o a resolver dudas."""
     _post_whatsapp({
         "messaging_product": "whatsapp",
         "to": telefono,
@@ -441,8 +405,9 @@ def enviar_botones_seguimiento_1d(telefono: str) -> None:
             "type": "button",
             "body": {
                 "text": (
-                    "¡Hola! 👋 Vimos que estuviste explorando nuestros paquetes. "
-                    "¿Te gustaría reservar tu lugar o tienes alguna duda sobre el proceso?"
+                    "¡Hola! 👋 Vimos que estuviste explorando nuestros destinos de viaje.\n\n"
+                    "¿Pudiste encontrar lo que buscabas? Si tienes alguna duda o ya estás listo "
+                    "para apartar tu lugar, aquí estamos. ✈️"
                 )
             },
             "action": {
@@ -456,8 +421,34 @@ def enviar_botones_seguimiento_1d(telefono: str) -> None:
     })
 
 
-def enviar_seguimiento_3d(telefono: str, estado: str = "chat_internacional") -> None:
-    enviar_mensaje_texto(telefono, _mensaje_seguimiento_3d(estado))
+def _enviar_recordatorio_cierre(telefono: str, estado: str) -> None:
+    """Segundo aviso a las 24h — advierte que el chat se cerrará en 2h."""
+    nombre = "Puebla Travel Trips" if estado == "chat_nacional" else "LibertYa"
+    _post_whatsapp({
+        "messaging_product": "whatsapp",
+        "to": telefono,
+        "type": "interactive",
+        "interactive": {
+            "type": "button",
+            "body": {
+                "text": (
+                    f"¡Hola de nuevo! 😊 Desde *{nombre}* queremos recordarte "
+                    "que seguimos aquí para ayudarte a planear tu próximo viaje. ✈️\n\n"
+                    "Nuestros asesores están listos para reservar tu lugar y acompañarte "
+                    "en cada paso, ya sea un destino nacional o internacional. 🌎\n\n"
+                    "⚠️ Si no recibimos respuesta en las próximas *2 horas*, "
+                    "cerraremos esta conversación automáticamente.\n"
+                    "¡Pero siempre estaremos aquí para cuando quieras viajar!"
+                )
+            },
+            "action": {
+                "buttons": [
+                    {"type": "reply", "reply": {"id": "btn_reservar",   "title": "Quiero reservar"}},
+                    {"type": "reply", "reply": {"id": "btn_no_interes", "title": "No me interesa"}},
+                ]
+            },
+        },
+    })
 
 
 def manejar_boton(db: Session, telefono: str, boton_id: str) -> None:
@@ -484,7 +475,8 @@ def manejar_boton(db: Session, telefono: str, boton_id: str) -> None:
 def procesar_seguimientos(db: Session) -> None:
     ahora = datetime.now(tz=_TZ_MX)
 
-    sesiones_1h = (
+    # ── 1. Seguimiento 8h: primer aviso tras 8h de inactividad ───────────────
+    sesiones_8h = (
         db.query(SesionIA)
         .filter(
             SesionIA.sesion_cerrada == False,  # noqa: E712
@@ -496,29 +488,49 @@ def procesar_seguimientos(db: Session) -> None:
         )
         .all()
     )
-    for sesion in sesiones_1h:
+    for sesion in sesiones_8h:
         try:
-            enviar_botones_seguimiento_1d(sesion.telefono_cliente)
+            _enviar_seguimiento_8h(sesion.telefono_cliente)
             sesion.seguimiento_1h = ahora
             db.commit()
         except Exception as exc:
             logger.error("Error seguimiento 8h a %s: %s", sesion.telefono_cliente, exc)
 
-    sesiones_3d = (
+    # ── 2. Recordatorio 24h: segundo aviso con advertencia de cierre en 2h ───
+    sesiones_24h = (
         db.query(SesionIA)
         .filter(
             SesionIA.sesion_cerrada == False,  # noqa: E712
-            SesionIA.ultimo_mensaje < ahora - timedelta(days=3),
+            SesionIA.ultimo_mensaje < ahora - timedelta(hours=24),
             SesionIA.seguimiento_1h.isnot(None),
             SesionIA.seguimiento_3d.is_(None),
         )
         .all()
     )
-    for sesion in sesiones_3d:
+    for sesion in sesiones_24h:
         try:
             estado_sesion = get_estado(list(sesion.historial or []))
-            enviar_mensaje_texto(sesion.telefono_cliente, _mensaje_seguimiento_3d(estado_sesion))
+            _enviar_recordatorio_cierre(sesion.telefono_cliente, estado_sesion)
             sesion.seguimiento_3d = ahora
             db.commit()
         except Exception as exc:
-            logger.error("Error seguimiento 3d a %s: %s", sesion.telefono_cliente, exc)
+            logger.error("Error recordatorio 24h a %s: %s", sesion.telefono_cliente, exc)
+
+    # ── 3. Auto-cierre: 2h después del recordatorio sin respuesta ────────────
+    sesiones_cierre = (
+        db.query(SesionIA)
+        .filter(
+            SesionIA.sesion_cerrada == False,  # noqa: E712
+            SesionIA.seguimiento_3d.isnot(None),
+            SesionIA.seguimiento_3d < ahora - timedelta(hours=2),
+            SesionIA.ultimo_mensaje < SesionIA.seguimiento_3d,
+        )
+        .all()
+    )
+    for sesion in sesiones_cierre:
+        try:
+            sesion.sesion_cerrada = True
+            db.commit()
+            logger.info("Chat cerrado automáticamente: %s", sesion.telefono_cliente)
+        except Exception as exc:
+            logger.error("Error auto-cierre a %s: %s", sesion.telefono_cliente, exc)
