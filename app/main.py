@@ -115,6 +115,8 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
     sesion = obtener_o_crear_sesion(db, telefono)
     if sesion.sesion_cerrada:
         sesion.sesion_cerrada = False
+        sesion.seguimiento_1h = None
+        sesion.seguimiento_3d = None
         db.commit()
     historial = list(sesion.historial or [])
     estado = get_estado(historial)

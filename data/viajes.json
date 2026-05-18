@@ -113,21 +113,6 @@
     ],
     "reserva_con": "No especificado"
   },
-  {
-    "tipo": "nacional",
-    "destino": "Huatulco, Oaxaca",
-    "salidas": "Puebla",
-    "fecha_salida": "15-17 Mayo",
-    "no_dias": "3 días / 2 noches",
-    "precio": "Desde $3,550 MXN por persona",
-    "transporte": "Viaje redondo",
-    "incluye": [
-      "Seguro de viajero a bordo",
-      "Coordinador de grupo",
-      "Hotel"
-    ],
-    "reserva_con": "No especificado"
-  },
 
   {
     "tipo": "internacional",
