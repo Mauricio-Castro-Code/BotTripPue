@@ -1,88 +1,100 @@
-# CLAUDE.md — PueblTrips WhatsApp Bot
+# CLAUDE.md
 
-## Propósito del proyecto
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Bot de WhatsApp para **PUEBLA TRAVEL TRIPS**, agencia de viajes en Puebla. El bot atiende clientes en WhatsApp y realiza las siguientes funciones:
+## Project purpose
 
-- Responder preguntas frecuentes: destinos, precios, qué incluye cada paquete, formas de pago
-- Filtrar y calificar leads (detectar si hay interés real)
-- Derivar al agente humano cuando el cliente quiere reservar o necesita atención personalizada
+WhatsApp bot for **two travel agencies** sharing the same codebase:
+- **Puebla Travel Trips** — domestic routes (Mexico)
+- **LibertYa** — international routes
 
-**No hay generación de PDF, cotizaciones formales ni flujo de confirmación.** El bot es un asistente informativo conversacional.
+The bot informs clients about packages and routes them to a human advisor when they want to book. No PDF generation, no formal quotes, no booking automation.
 
-## Base del código
+## Commands
 
-El proyecto está **adaptado de BotCotizar** (bot de cotización para Alquiladora Crystal). Gran parte de la lógica original (PDF, cotizaciones, inventario de equipo, flujo de autorización) debe eliminarse y reemplazarse por un flujo conversacional simple.
+```bash
+# Start dev server
+uvicorn app.main:app --reload
 
-Archivos con referencias al negocio anterior que hay que migrar:
-- [app/main.py](app/main.py) — título de la app, mensajes de bienvenida, flujo
-- [app/services.py](app/services.py) — lógica de negocio y prompts a OpenAI
-- [app/schemas.py](app/schemas.py) — eliminar `DatosRenta`; el bot no acumula datos en un schema estructurado
-- [app/models.py](app/models.py) — eliminar modelos de cotizaciones/inventario que no aplican
-- [data/catalogo.py](data/catalogo.py) — reemplazar catálogo de muebles con info de paquetes de viaje
-- [db/schema.sql](db/schema.sql) — simplificar; solo necesitamos sesiones y registro de leads
+# Expose for webhook testing
+ngrok http 8000
 
-## Stack tecnológico
+# Trigger follow-up job manually (requires WHATSAPP_VERIFY_TOKEN)
+curl -X POST "http://localhost:8000/cron/recordatorio?token=<WHATSAPP_VERIFY_TOKEN>"
+```
 
-| Componente | Tecnología |
+## Architecture
+
+```
+WhatsApp → Meta Webhook → POST /webhook
+                              │
+                    _procesar_payload()   ← handles text + interactive button replies
+                              │
+                    _procesar_mensaje()
+                      ├── blocked? → ignore
+                      ├── clasificar_intencion()  [gpt-4o-mini, temp=0]
+                      │     └── returns: saludo | despedida | no_interesado
+                      │                 menu_1..4 | continuar
+                      ├── state machine transition
+                      └── generar_respuesta_ia()  [gpt-4o-mini, function calling]
+
+APScheduler (every 5 min) → procesar_seguimientos()
+                              ├── 8h inactivity  → follow-up with 3-button interactive
+                              ├── 24h inactivity → close-warning with 2h deadline
+                              └── 2h after warning → auto-close session
+```
+
+### Session state machine
+
+State is encoded as a `{"role": "meta", "estado": "<state>"}` entry prepended to the `historial` JSONB array (alongside normal OpenAI `user`/`assistant` messages). `get_estado()` reads it; `set_estado()` replaces it.
+
+States:
+| State | Meaning |
 |---|---|
-| Framework API | FastAPI + Uvicorn |
-| BD | PostgreSQL + SQLAlchemy 2.x |
-| IA | OpenAI (GPT-4o) — respuestas conversacionales |
-| Mensajería | Meta WhatsApp Business API (Cloud API v20) |
-| Validación | Pydantic v2 + pydantic-settings |
+| `menu` | Initial / greeted, waiting for topic choice |
+| `chat_nacional` | Client interested in domestic trips (Puebla Travel Trips) |
+| `chat_internacional` | Client interested in international trips (LibertYa) |
+| `chat_cliente` | Existing client with questions / payments / groups |
+| `cerrada` | Session closed (no follow-ups sent) |
 
-Dependencias a eliminar: `fpdf2`, `openpyxl` (no hay PDF ni Excel).
+Only states in `_ESTADOS_CON_IA` (`chat_nacional`, `chat_internacional`, `chat_cliente`) send further messages through OpenAI and trigger interactive booking buttons after each reply.
 
-## Arquitectura
+### Intent classifier
 
-```
-WhatsApp → Meta Webhook → POST /webhook (FastAPI)
-                              │
-                    _procesar_payload()
-                              │
-                    _procesar_mensaje_texto()
-                      ├── es_saludo() → bienvenida + menú de destinos
-                      ├── OpenAI (contexto conversacional) → respuesta informativa
-                      └── detectar_interes_reserva() → derivar a agente humano
-```
+`clasificar_intencion(texto, estado)` calls `gpt-4o-mini` with `temperature=0` to classify into one of 8 intents. When already in a `chat_*` state, almost everything should classify as `continuar` (rule enforced in the system prompt). On API failure, falls back to `continuar`.
 
-### Flujo de conversación
+### Two-advisor routing
 
-1. Cliente manda mensaje → bot saluda y presenta los destinos disponibles
-2. Cliente pregunta sobre precios, fechas, qué incluye, formas de pago → OpenAI responde usando el catálogo de paquetes como contexto
-3. Si el cliente muestra intención de reservar → bot indica que un asesor lo contactará y cierra la sesión
-4. Cualquier cosa fuera del scope de viajes → responder amablemente y redirigir
+Each session state maps to an advisor number:
+- `chat_nacional` → `NUMERO_ASESOR_NACIONAL` (Puebla Travel Trips)
+- everything else → `NUMERO_ASESOR_INTERNACIONAL` (LibertYa)
 
-### Gestión de sesión
+Buttons `btn_reservar` / `btn_asesor` send a WhatsApp deep link to the appropriate advisor.
 
-- Una sesión activa por `telefono_cliente`
-- El historial de mensajes se acumula en `sesiones_ia.contexto_actual` (JSONB) para dar contexto a OpenAI
-- Teléfonos en `BLOCKED_PHONES` → bot ignora completamente
+## Data layer
 
-## Estructura de archivos
-
-```
-PueblTrips/
-├── app/
-│   ├── main.py        # Endpoints FastAPI + orquestación del flujo
-│   ├── services.py    # Lógica: OpenAI, WhatsApp API, sesiones
-│   ├── models.py      # Modelos SQLAlchemy (sesiones, leads)
-│   ├── schemas.py     # Pydantic: payload de WhatsApp
-│   ├── config.py      # Settings desde .env (pydantic-settings)
-│   └── database.py    # Engine SQLAlchemy + get_db()
-├── data/
-│   └── paquetes.py    # FUENTE DE VERDAD: info de destinos y paquetes
-│                        # Se inyecta como contexto al prompt de OpenAI
-├── db/
-│   └── schema.sql     # DDL PostgreSQL
-├── assets/
-│   └── logo.png
-├── .env.example
-└── requirements.txt
+**`data/viajes.json`** — the actual source of truth. Each entry has:
+```json
+{
+  "tipo": "nacional" | "internacional",
+  "destino": "...", "fecha_salida": "...", "salidas": "...",
+  "no_dias": "...", "precio": "...", "transporte": "...",
+  "incluye": ["..."], "reserva_con": "..."
+}
 ```
 
-## Variables de entorno (.env)
+**`data/paquetes.py`** — reads `viajes.json` on every call (no caching, so edits to the JSON are reflected without restart). Exports:
+- `get_resumen_nacionales()` / `get_top10_internacionales()` — short lists for the initial menu response
+- `get_contexto_paquetes()` — full detail injected as context into every OpenAI call
+- `METODOS_PAGO`, `REQUISITOS` — static strings
+
+## Database
+
+Two tables (see [db/schema.sql](db/schema.sql)):
+- **`sesiones_ia`** — one row per phone; `historial` JSONB stores full conversation; `seguimiento_1h` / `seguimiento_3d` track follow-up timestamps
+- **`leads`** — one row per phone; `estatus` progresses through: `nuevo` → `informado` → `derivado_nacional` | `derivado_internacional` | `no_interesado`
+
+## Variables de entorno
 
 ```
 DATABASE_URL=postgresql://usuario@localhost:5432/puebltrips
@@ -90,41 +102,21 @@ OPENAI_API_KEY=sk-...
 WHATSAPP_TOKEN=EAAxxxxxxx
 WHATSAPP_VERIFY_TOKEN=mi_token
 WHATSAPP_PHONE_NUMBER_ID=123456
-BLOCKED_PHONES=521XXXXXXXXXX
+BLOCKED_PHONES=521XXXXXXXXXX,521YYYYYYYYYY   # comma-separated
 ```
 
-## Convenciones de código
+## Code conventions
 
-- **Sin comentarios obvios** — solo cuando el "por qué" no es evidente
-- **Español** para variables de dominio (sesion, viaje, paquete, negocio)
-- **Inglés** para términos técnicos (handler, payload, parser)
-- Los endpoints siempre devuelven HTTP 200 a Meta (para evitar reintentos), los errores se loguean
-- El bot **solo procesa mensajes de texto**; adjuntos/audio/stickers se ignoran
+- **Español** for domain variables (`sesion`, `viaje`, `paquete`, `seguimiento`)
+- **Inglés** for technical terms (`handler`, `payload`, `parser`, `scheduler`)
+- Endpoints always return HTTP 200 to Meta (errors are logged, never re-raised to the caller)
+- Only text and interactive button messages are processed; all other types are silently ignored
+- Timezone: `America/Mexico_City` (enforced via `ZoneInfo`)
+- `historial` is capped at `_MAX_HISTORIAL = 20` messages before sending to OpenAI
 
-## Reglas de negocio
+## Key business rules
 
-- Los teléfonos en `BLOCKED_PHONES` nunca reciben respuesta
-- Si el cliente quiere reservar → responder que un asesor lo contactará pronto; no automatizar reservas
-- El bot nunca inventa precios ni destinos — solo usa lo que está en `data/paquetes.py`
-- Timezone: `America/Mexico_City`
-
-## Comandos útiles
-
-```bash
-# Desarrollo
-uvicorn app.main:app --reload
-
-# Exponer para pruebas de webhook
-ngrok http 8000
-```
-
-## Estado actual
-
-Migración completada. El bot está listo para conectar con Supabase y Meta.
-
-Pendiente antes de producción:
-- [ ] Llenar [data/paquetes.py](data/paquetes.py) con los paquetes y precios reales
-- [ ] Correr [db/schema.sql](db/schema.sql) en Supabase SQL Editor
-- [ ] Completar `.env` con los tokens de Meta y Supabase
-- [ ] Configurar el webhook en Meta Developers apuntando a la URL pública del servidor
-- [ ] Borrar archivos obsoletos: `data/catalogo.py`, `scripts/`, `app/__init__.py` si está vacío
+- Phones in `BLOCKED_PHONES` are ignored before any DB write
+- The bot never fabricates prices or destinations — OpenAI only has what's in `viajes.json`
+- Reservations are never automated — `btn_reservar` sends a link to a human advisor
+- Sessions auto-close 2h after the 24h warning if no reply is received

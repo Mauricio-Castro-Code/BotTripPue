@@ -47,7 +47,7 @@ _MENU_OPCIONES = (
     "2️⃣ Viajes internacionales *(LibertYa)*\n"
     "3️⃣ Ya aparté un viaje / soy cliente\n"
     "4️⃣ Pagos, requisitos y más información\n\n"
-    "Responde con el número de tu opción 👇🏼"
+    "Responde con el número, la categoría o escribe directamente tu duda 👇🏼"
 )
 
 _MENSAJE_BIENVENIDA = (
@@ -151,7 +151,13 @@ _VALIDAS_INTENT = frozenset({
 })
 
 
+_MENU_DIRECTO = {"1": "menu_1", "2": "menu_2", "3": "menu_3", "4": "menu_4"}
+
+
 def clasificar_intencion(texto: str, estado: str) -> str:
+    if estado == "menu" and texto.strip() in _MENU_DIRECTO:
+        return _MENU_DIRECTO[texto.strip()]
+
     try:
         response = _openai_client.chat.completions.create(
             model="gpt-4o-mini",
