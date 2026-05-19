@@ -36,9 +36,9 @@ _openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
 META_API_BASE = "https://graph.facebook.com/v25.0"
 _MAX_HISTORIAL = 20
 
-NUMERO_ASESOR_NACIONAL       = "522212664376"   # Puebla Travel Trips
-NUMERO_ASESOR_INTERNACIONAL  = "522222002327"   # LibertYa
-
+NUMERO_ASESOR_NACIONAL       = "522228126321"   # Puebla Travel Trips
+NUMERO_ASESOR_INTERNACIONAL  = "522225207938"   # LibertYa
+ 
 # ─── Menú ─────────────────────────────────────────────────────────────────────
 
 _MENU_OPCIONES = (
