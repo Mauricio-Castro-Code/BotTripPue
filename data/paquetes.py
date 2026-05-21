@@ -3,6 +3,13 @@ Puebla Travel Trips — FUENTE DE VERDAD.
 
 Para actualizar viajes: edita data/viajes.json (agrega "tipo": "nacional" o "internacional")
 Para actualizar pagos, requisitos y ubicación: edita este archivo.
+
+Campos opcionales en viajes.json:
+  fechas          → lista de fechas de salida (reemplaza fecha_salida)
+  estado          → región geográfica ("Morelos", "Quintana Roo"...)
+  horario_salida  → hora de salida para excursiones de 1 día ("06:30 am")
+  horario_regreso → hora de regreso para excursiones de 1 día ("10:30 pm")
+  notas           → texto libre para notas especiales del tour
 """
 from __future__ import annotations
 import json
@@ -14,11 +21,102 @@ def _leer_viajes() -> list[dict]:
     return json.loads(ruta.read_text(encoding="utf-8"))
 
 
+def _primera_fecha(v: dict) -> str:
+    fechas = v.get("fechas", [])
+    return fechas[0] if fechas else "Por confirmar"
+
+
+def _formatear_viaje(v: dict) -> str:
+    lines = [f"*{v['destino']}*", f"💰 {v['precio']}", ""]
+
+    # Fechas
+    fechas = [f for f in v.get("fechas", []) if f]
+    if fechas:
+        lines.append("📆 *Cuándo ::*")
+        for f in fechas:
+            lines.append(f"   {f}")
+        lines.append("")
+
+    # Ubicación (solo si hay estado o punto de salida específico)
+    estado = v.get("estado", "")
+    salidas = v.get("salidas", "")
+    punto_especifico = salidas not in ("", "No especificado", "Puebla")
+    if estado or punto_especifico:
+        loc = "📍 *Dónde ::*"
+        if estado:
+            loc += f" {estado}"
+        lines.append(loc)
+        lines.append("Salida desde Puebla")
+        if punto_especifico:
+            lines.append(f"({salidas})")
+        lines.append("")
+
+    # Horarios (excursiones de 1 día)
+    horario_salida = v.get("horario_salida", "")
+    horario_regreso = v.get("horario_regreso", "")
+    if horario_salida or horario_regreso:
+        if horario_salida:
+            lines.append("Salida :: ⏰🏃")
+            lines.append(horario_salida)
+        if horario_regreso:
+            lines.append("Regreso :: ⏰🏃")
+            lines.append(horario_regreso)
+        lines.append("")
+    else:
+        # Duración y transporte para paquetes de varios días
+        no_dias = v.get("no_dias", "")
+        transporte = v.get("transporte", "")
+        tiene_duracion = no_dias and no_dias != "No especificado"
+        tiene_transporte = transporte and transporte != "No especificado"
+        if tiene_duracion:
+            lines.append(f"⏱️ *Duración ::* {no_dias}")
+        if tiene_transporte:
+            lines.append(f"✈️ *Transporte ::* {transporte}")
+        if tiene_duracion or tiene_transporte:
+            lines.append("")
+
+    # Ciudades que visita (internacionales)
+    lugares = v.get("lugares", [])
+    if lugares:
+        lines.append("🗺️ *Ciudades que visitas ::*")
+        lines.append("   " + " · ".join(lugares))
+        lines.append("")
+
+    # Qué incluye
+    incluye = v.get("incluye", [])
+    if incluye:
+        lines.append("Tu tour incluye :: 🔍🗒️")
+        for item in incluye:
+            lines.append(item)
+        lines.append("")
+
+    # Requisitos especiales
+    requisitos = v.get("requisitos", [])
+    if requisitos:
+        lines.append("⚠️ *Requisitos ::*")
+        for req in requisitos:
+            lines.append(f"   {req}")
+        lines.append("")
+
+    # Notas libres
+    notas = v.get("notas", "")
+    if notas:
+        lines.append(notas)
+        lines.append("")
+
+    # Reserva
+    reserva = v.get("reserva_con", "")
+    if reserva and reserva != "No especificado":
+        lines.append(f"💵 {reserva}")
+
+    return "\n".join(lines).strip()
+
+
 def _resumen_por_tipo(tipo: str) -> str:
     viajes = [v for v in _leer_viajes() if v.get("tipo") == tipo]
     if not viajes:
         return "Por el momento no tenemos paquetes disponibles en esta categoría. Pronto traeremos novedades. 😊"
-    lineas = [f"• *{v['destino']}* — {v['fecha_salida']}" for v in viajes]
+    lineas = [f"• *{v['destino']}* — {_primera_fecha(v)}" for v in viajes]
     etiqueta = "🇲🇽 *Viajes Nacionales disponibles:*" if tipo == "nacional" else "🌎 *Viajes Internacionales disponibles:*"
     return (
         f"{etiqueta}\n\n"
@@ -26,24 +124,6 @@ def _resumen_por_tipo(tipo: str) -> str:
         + "\n\n¿Cuál te llama la atención? Dime el destino y te mando precio, fechas y todo lo que incluye. 😊\n"
         "¿Viste algo en nuestras redes que no está aquí? ¡También pregúntame! 📲"
     )
-
-
-def _detalle_completo() -> str:
-    viajes = _leer_viajes()
-    bloques = []
-    for v in viajes:
-        incluye = "\n   ✅ ".join(v.get("incluye", []))
-        bloques.append(
-            f"✈️ *{v['destino']}* ({v.get('tipo', '')})\n"
-            f"   📅 Salidas: {v['salidas']}\n"
-            f"   🗓️ Próxima salida: {v['fecha_salida']}\n"
-            f"   ⏱️ Duración: {v['no_dias']}\n"
-            f"   💰 Precio: {v['precio']}\n"
-            f"   🚌 Transporte: {v['transporte']}\n"
-            f"   ✅ {incluye}\n"
-            f"   💵 Reserva con: {v['reserva_con']}"
-        )
-    return "\n\n".join(bloques)
 
 
 # Estas funciones se llaman en cada request para reflejar cambios en viajes.json sin reiniciar
@@ -74,7 +154,7 @@ def get_top10_internacionales() -> str:
     )
 
 def get_contexto_paquetes() -> str:
-    return _detalle_completo()
+    return "\n\n---\n\n".join(_formatear_viaje(v) for v in _leer_viajes())
 
 
 # ─── Métodos de pago ──────────────────────────────────────────────────────────
