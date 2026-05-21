@@ -27,7 +27,7 @@ from data.paquetes import (
     REQUISITOS,
     get_contexto_paquetes,
     get_resumen_nacionales,
-    get_top10_internacionales,
+    get_resumen_internacionales,
 )
 
 logger = logging.getLogger(__name__)
@@ -89,7 +89,13 @@ _ESTADOS_CON_IA = {"chat_nacional", "chat_internacional", "chat_cliente", "chat_
 _SISTEMA_BASE = """
 Eres un asistente de WhatsApp de la familia de agencias *Puebla Travel Trips* (viajes nacionales) y *LibertYa* (viajes internacionales), con base en Puebla, México.
 Responde siempre en español, de forma amable y concisa (máximo 3 párrafos cortos).
-No inventes información que no esté en los paquetes disponibles.
+
+REGLA ABSOLUTA — INFORMACIÓN DE PAQUETES:
+Cuando un cliente pregunte por un destino o paquete, busca en la sección PAQUETES DISPONIBLES la entrada que más se parezca a lo que pide.
+- Si la encuentras: copia EXACTAMENTE los datos del catálogo (precio, fechas, duración, transporte, incluye, reserva). No parafrasees ni inventes datos distintos.
+- Si NO la encuentras: responde amablemente que ese tour no está disponible aún, y ofrece que un asesor puede cotizárselo.
+NUNCA inventes precios, fechas, transportes ni contenidos de un paquete que no estén literalmente en PAQUETES DISPONIBLES.
+
 IMPORTANTE: Nunca incluyas links de contacto ni menciones al asesor en tu respuesta. Solo proporciona información del destino o paquete. Los botones de acción los maneja el sistema automáticamente.
 """
 
@@ -356,7 +362,7 @@ def get_respuesta_opcion(opcion: str) -> str:
     if opcion == "1":
         return get_resumen_nacionales()
     if opcion == "2":
-        return get_top10_internacionales()
+        return get_resumen_internacionales()
     return _RESPUESTAS_FIJAS.get(opcion, "")
 
 

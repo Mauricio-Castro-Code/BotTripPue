@@ -291,21 +291,6 @@
 },
 {
   "tipo": "internacional",
-  "destino": "Disney: Orlando, Tokio o París",
-  "fechas": ["Fechas abiertas a disponibilidad del cliente"],
-  "no_dias": null,
-  "precio": "A cotizar según destino y fechas",
-  "transporte": "A cotizar",
-  "incluye": [
-    "🎢 Todos los parques del Disney seleccionado"
-  ],
-  "lugares": ["Disney Orlando", "Disney Tokio", "Disney París"],
-  "requisitos": [],
-  "reserva_con": null,
-  "notas": "Cotización personalizada según destino, fechas y número de personas. Incluye todos los parques del Disney elegido."
-},
-{
-  "tipo": "internacional",
   "destino": "Tomorrowland 2026: Bélgica y Eurotrip",
   "fechas": [
     "Segunda semana de julio 2026 (Week 1)",
