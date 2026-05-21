@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 from openai import OpenAI
+from urllib.parse import quote
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -179,16 +180,27 @@ def _numero_asesor(estado: str) -> str:
     return NUMERO_ASESOR_NACIONAL if estado == "chat_nacional" else NUMERO_ASESOR_INTERNACIONAL
 
 
-def _mensaje_derivar(estado: str) -> str:
+def _mensaje_derivar(estado: str, viajes_interes: list[str] | None = None) -> str:
     if estado == "chat_nacional":
         nombre = "Puebla Travel Trips"
         numero = NUMERO_ASESOR_NACIONAL
     else:
         nombre = "LibertYa"
         numero = NUMERO_ASESOR_INTERNACIONAL
+
+    if viajes_interes:
+        if len(viajes_interes) == 1:
+            detalle = viajes_interes[0]
+        else:
+            detalle = ", ".join(viajes_interes[:-1]) + " y " + viajes_interes[-1]
+        texto_precar = f"Hola, estoy interesado en reservar: {detalle}"
+        link = f"https://wa.me/{numero}?text={quote(texto_precar)}"
+    else:
+        link = f"https://wa.me/{numero}"
+
     return (
         f"¡Con gusto! 😊 Escríbele directamente al asesor de *{nombre}*:\n\n"
-        f"👉 https://wa.me/{numero}\n\n"
+        f"👉 {link}\n\n"
         "Te atenderá personalmente a la brevedad. ✈️"
     )
 
@@ -217,9 +229,19 @@ def get_estado(historial: list) -> str:
     return "menu"
 
 
-def set_estado(mensajes: list, estado: str) -> list:
+def get_viajes_interes(historial: list) -> list[str]:
+    for msg in historial:
+        if msg.get("role") == "meta":
+            return list(msg.get("viajes_interes", []))
+    return []
+
+
+def set_estado(mensajes: list, estado: str, viajes_interes: list[str] | None = None) -> list:
     sin_meta = [m for m in mensajes if m.get("role") != "meta"]
-    return [{"role": "meta", "estado": estado}] + sin_meta
+    meta: dict = {"role": "meta", "estado": estado}
+    if viajes_interes:
+        meta["viajes_interes"] = viajes_interes
+    return [meta] + sin_meta
 
 
 def mensajes_openai(historial: list) -> list:
@@ -293,6 +315,15 @@ _FUNCION_RESPONDER = {
                 "type": "string",
                 "description": "Destino de viaje que le interesa si lo mencionó. Null si no.",
             },
+            "viaje_interes": {
+                "type": "string",
+                "description": (
+                    "Resumen conciso del viaje ESPECÍFICO que le interesa al cliente, "
+                    "solo si preguntó por un destino concreto del catálogo. "
+                    "Formato: 'Destino (salida DD MMM, $precio)'. "
+                    "Null si solo está explorando o preguntando de forma general."
+                ),
+            },
         },
         "required": ["respuesta"],
     },
@@ -329,8 +360,8 @@ def get_respuesta_opcion(opcion: str) -> str:
     return _RESPUESTAS_FIJAS.get(opcion, "")
 
 
-def generar_respuesta_ia(mensajes: list, estado: str = "menu") -> tuple[str, str | None, str | None]:
-    """Llama a OpenAI. Devuelve (respuesta, nombre_detectado, destino_detectado)."""
+def generar_respuesta_ia(mensajes: list, estado: str = "menu") -> tuple[str, str | None, str | None, str | None]:
+    """Llama a OpenAI. Devuelve (respuesta, nombre_detectado, destino_detectado, viaje_interes)."""
     contexto = _CONTEXTO_POR_ESTADO.get(estado, "")
     paquetes_actuales = get_contexto_paquetes()
     sistema = (
@@ -351,6 +382,7 @@ def generar_respuesta_ia(mensajes: list, estado: str = "menu") -> tuple[str, str
         args["respuesta"],
         args.get("nombre_detectado"),
         args.get("destino_detectado"),
+        args.get("viaje_interes"),
     )
 
 
@@ -469,9 +501,10 @@ def manejar_boton(db: Session, telefono: str, boton_id: str) -> None:
         enviar_mensaje_texto(telefono, _MENSAJE_DESPEDIDA)
 
     elif boton_id in ("btn_asesor", "btn_reservar"):
+        viajes_interes = get_viajes_interes(list(sesion.historial or []))
         estatus_derivado = "derivado_nacional" if estado == "chat_nacional" else "derivado_internacional"
         guardar_o_actualizar_lead(db, telefono, estatus=estatus_derivado)
-        enviar_mensaje_texto(telefono, _mensaje_derivar(estado))
+        enviar_mensaje_texto(telefono, _mensaje_derivar(estado, viajes_interes))
 
     elif boton_id == "btn_seguir":
         guardar_historial(db, sesion, set_estado(mensajes_openai(list(sesion.historial or [])), "menu"))

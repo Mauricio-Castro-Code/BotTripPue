@@ -29,6 +29,7 @@ from .services import (
     enviar_mensaje_texto,
     generar_respuesta_ia,
     get_estado,
+    get_viajes_interes,
     get_respuesta_opcion,
     guardar_historial,
     guardar_o_actualizar_lead,
@@ -143,10 +144,13 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
         return
 
     if intencion == "continuar" and estado in _ESTADOS_CON_IA:
+        viajes_actuales = get_viajes_interes(historial)
         msgs = preparar_historial(mensajes_openai(historial), texto)
-        respuesta, nombre, destino = generar_respuesta_ia(msgs, estado)
+        respuesta, nombre, destino, viaje_nuevo = generar_respuesta_ia(msgs, estado)
         msgs.append({"role": "assistant", "content": respuesta})
-        guardar_historial(db, sesion, set_estado(msgs, estado))
+        if viaje_nuevo and viaje_nuevo not in viajes_actuales:
+            viajes_actuales = (viajes_actuales + [viaje_nuevo])[:3]
+        guardar_historial(db, sesion, set_estado(msgs, estado, viajes_actuales))
         guardar_o_actualizar_lead(db, telefono, nombre=nombre, destino=destino)
         enviar_mensaje_texto(telefono, respuesta)
         enviar_botones_reserva(telefono)
