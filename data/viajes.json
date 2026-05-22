@@ -357,5 +357,171 @@
   "requisitos": ["Pasaporte vigente"],
   "reserva_con": "$3,000 MXN de anticipo, liquidar 1 mes antes",
   "notas": "Solo 10 lugares disponibles por fecha. Fechas abiertas a vacaciones del cliente."
+},
+{
+  "tipo": "internacional",
+  "destino": "Marruecos, Portugal y España: Marrakech, Lisboa y Madrid",
+  "fechas": ["19 al 29 de octubre 2026"],
+  "no_dias": "11 días (7 en Marruecos, 2 en Portugal, 2 en Madrid)",
+  "precio": "$66,500 MXN por persona / $64,000 MXN preventa",
+  "transporte": "Vuelos redondos",
+  "incluye": [
+    "✈️ Vuelos redondos",
+    "🏨 Hoteles 3 estrellas",
+    "🗺️ Guías locales",
+    "🚐 Tours incluidos",
+    "🇲🇦 7 días en Marruecos",
+    "🇵🇹 2 días en Portugal",
+    "🇪🇸 2 días en Madrid"
+  ],
+  "lugares": ["Marrakech", "Ciudad Azul (Chefchaouen)", "Lisboa", "Madrid"],
+  "requisitos": ["Pasaporte vigente"],
+  "reserva_con": "$10,000 MXN de anticipo, liquidar 1 mes antes",
+  "notas": "Fechas abiertas a vacaciones del cliente."
+},
+{
+  "tipo": "internacional",
+  "destino": "Jamaica",
+  "fechas": ["14 al 20 de agosto 2026"],
+  "no_dias": "5 días",
+  "precio": "$25,500 MXN por persona",
+  "transporte": "Vuelo redondo",
+  "incluye": [
+    "✈️ Vuelo redondo",
+    "🏨 Hoteles 3 estrellas / Airbnb de lujo",
+    "🗺️ Guías locales",
+    "🚐 Tours incluidos",
+    "🚌 Transporte al hotel"
+  ],
+  "lugares": ["Jamaica"],
+  "requisitos": ["Pasaporte vigente"],
+  "reserva_con": "$8,000 MXN de anticipo, liquidar 1 mes antes",
+  "notas": "Fechas abiertas a vacaciones del cliente."
+},
+{
+  "tipo": "internacional",
+  "destino": "Año Nuevo en el Polo Norte: España, Noruega, Finlandia, Estonia, Suecia y Polonia",
+  "fechas": ["26 de diciembre 2026 al 11 de enero 2027"],
+  "no_dias": "17 días",
+  "precio": "$92,000 MXN / $86,000 MXN preventa",
+  "transporte": "Vuelos redondos",
+  "incluye": [
+    "✈️ Vuelos redondos",
+    "🏨 Hoteles 3 estrellas",
+    "🗺️ Guías locales",
+    "🚐 Tours incluidos",
+    "🐕 Experiencias árticas con huskies y renos"
+  ],
+  "lugares": ["Madrid", "Oslo", "Rovaniemi", "Helsinki", "Tallin", "Estocolmo", "Varsovia"],
+  "requisitos": ["Pasaporte vigente"],
+  "reserva_con": "$12,000 MXN de anticipo, liquidar 1 mes antes",
+  "notas": "Solo 15 lugares disponibles. Viaje en grupo."
+},
+{
+  "tipo": "internacional",
+  "destino": "Clásico Español: París, Bruselas, Barcelona y Madrid",
+  "fechas": ["Octubre 2026"],
+  "no_dias": null,
+  "precio": "Desde $59,900 MXN por persona",
+  "transporte": "Vuelos redondos",
+  "incluye": [
+    "✈️ Vuelos redondos",
+    "🏨 Hoteles 3-4 estrellas o Airbnb de lujo",
+    "🗺️ Guías locales",
+    "🚐 Tours incluidos",
+    "🎟️ Boleto Clásico Español (Real Madrid vs FC Barcelona - Santiago Bernabéu)",
+    "🍳 Desayunos (opcional)"
+  ],
+  "lugares": ["París", "Bruselas", "Barcelona", "Madrid"],
+  "requisitos": ["Pasaporte vigente"],
+  "reserva_con": "$10,000 MXN de anticipo, liquidar 1 mes antes"
+},
+{
+  "tipo": "internacional",
+  "destino": "EDC Colombia: Medellín, Guatapé y Comuna 13",
+  "fechas": ["7 al 14 de octubre 2026"],
+  "no_dias": "8 días / 4 noches de hospedaje",
+  "precio": "$26,000 MXN por persona",
+  "transporte": "Vuelos redondos",
+  "incluye": [
+    "✈️ Vuelos redondos",
+    "🎟️ Boletos EDC Colombia (10 y 11 de octubre)",
+    "🏨 Hoteles 3 estrellas o Airbnb (4 noches)",
+    "🗺️ Guías locales",
+    "🚐 Tours incluidos",
+    "🍳 Desayunos incluidos",
+    "🚌 Traslado redondo aeropuerto-hospedaje",
+    "🪪 Lanyard",
+    "👥 Asistencia del staff"
+  ],
+  "lugares": ["Medellín", "Guatapé", "Comuna 13", "Piedra del Peñol"],
+  "requisitos": ["Pasaporte vigente"],
+  "reserva_con": "$10,000 MXN de anticipo, liquidar 1 mes antes",
+  "notas": "También se puede liquidar en pagos. Pago de contado con 10% de descuento."
+},
+{
+  "tipo": "internacional",
+  "destino": "Alpes Suizos y Europa Medieval: Praga, Budapest, Viena, Milán y Suiza",
+  "fechas": [
+    "1 al 12 de junio 2026",
+    "17 al 28 de agosto 2026",
+    "3 al 15 de enero 2027"
+  ],
+  "no_dias": "12 días",
+  "precio": "$74,000 MXN por persona",
+  "transporte": "Vuelos redondos",
+  "incluye": [
+    "✈️ Vuelos redondos",
+    "🏨 Hoteles 4 estrellas",
+    "🗺️ Guías locales",
+    "🚐 Tours incluidos",
+    "🍳 Desayunos incluidos",
+    "🚗 Traslados",
+    "🚂 Tren Bernina (Alpes Suizos)"
+  ],
+  "lugares": ["Praga", "Budapest", "Viena", "Milán", "Suiza", "St. Moritz"],
+  "requisitos": ["Pasaporte vigente"],
+  "reserva_con": "$10,000 MXN de anticipo, liquidar 1 mes antes",
+  "notas": "Fechas abiertas a vacaciones del cliente."
+},
+{
+  "tipo": "internacional",
+  "destino": "XV Años en Europa: Inglaterra, París e Italia",
+  "fechas": ["Fechas abiertas a disponibilidad del cliente"],
+  "no_dias": "9 días",
+  "precio": "Desde $55,000 MXN por persona",
+  "transporte": "Vuelos redondos",
+  "incluye": [
+    "✈️ Vuelos redondos",
+    "🏨 Hospedaje 3 estrellas",
+    "🏰 Entrada a Disneyland París",
+    "🗺️ City Tour París",
+    "🗺️ City Tour Roma"
+  ],
+  "lugares": ["Inglaterra", "París", "Italia"],
+  "requisitos": [],
+  "reserva_con": "$10,000 MXN de anticipo, liquidar en pagos",
+  "notas": "Paquete especial XV años. Itinerario modificable según preferencias del cliente."
+},
+{
+  "tipo": "internacional",
+  "destino": "República Dominicana: Punta Cana",
+  "fechas": [
+    "4 al 9 de septiembre 2026",
+    "2 al 8 de noviembre 2026"
+  ],
+  "no_dias": "6 días",
+  "precio": "$25,500 MXN por persona",
+  "transporte": "Vuelos redondos",
+  "incluye": [
+    "✈️ Vuelos redondos",
+    "🏨 Hoteles o Airbnb 4 estrellas",
+    "🗺️ Guías locales",
+    "🚐 Tours incluidos (opcionales)"
+  ],
+  "lugares": ["Punta Cana"],
+  "requisitos": ["Pasaporte vigente"],
+  "reserva_con": "$5,000 MXN de anticipo, liquidar 1 mes antes",
+  "notas": "Fechas abiertas a vacaciones del cliente. Promoción especial a partir de 4 personas."
 }
 ]

@@ -32,9 +32,9 @@ def _formatear_viaje(v: dict) -> str:
     # Fechas
     fechas = [f for f in v.get("fechas", []) if f]
     if fechas:
-        lines.append("📆 *Cuándo ::*")
+        lines.append("📆 *Fechas de salida:*")
         for f in fechas:
-            lines.append(f"   {f}")
+            lines.append(f"• {f}")
         lines.append("")
 
     # Ubicación (solo si hay estado o punto de salida específico)
@@ -42,7 +42,7 @@ def _formatear_viaje(v: dict) -> str:
     salidas = v.get("salidas", "")
     punto_especifico = salidas not in ("", "No especificado", "Puebla")
     if estado or punto_especifico:
-        loc = "📍 *Dónde ::*"
+        loc = "📍 *Dónde:*"
         if estado:
             loc += f" {estado}"
         lines.append(loc)
@@ -56,36 +56,36 @@ def _formatear_viaje(v: dict) -> str:
     horario_regreso = v.get("horario_regreso", "")
     if horario_salida or horario_regreso:
         if horario_salida:
-            lines.append("Salida :: ⏰🏃")
-            lines.append(horario_salida)
+            lines.append(f"⏰ Salida: {horario_salida}")
         if horario_regreso:
-            lines.append("Regreso :: ⏰🏃")
-            lines.append(horario_regreso)
+            lines.append(f"⏰ Regreso: {horario_regreso}")
         lines.append("")
     else:
-        # Duración y transporte para paquetes de varios días
+        # Duración y transporte en una sola línea cuando ambos están disponibles
         no_dias = v.get("no_dias", "")
         transporte = v.get("transporte", "")
         tiene_duracion = no_dias and no_dias != "No especificado"
         tiene_transporte = transporte and transporte != "No especificado"
-        if tiene_duracion:
-            lines.append(f"⏱️ *Duración ::* {no_dias}")
-        if tiene_transporte:
-            lines.append(f"✈️ *Transporte ::* {transporte}")
+        if tiene_duracion and tiene_transporte:
+            lines.append(f"⏱️ {no_dias}  ·  ✈️ {transporte}")
+        elif tiene_duracion:
+            lines.append(f"⏱️ *Duración:* {no_dias}")
+        elif tiene_transporte:
+            lines.append(f"✈️ *Transporte:* {transporte}")
         if tiene_duracion or tiene_transporte:
             lines.append("")
 
     # Ciudades que visita (internacionales)
     lugares = v.get("lugares", [])
     if lugares:
-        lines.append("🗺️ *Ciudades que visitas ::*")
+        lines.append("🗺️ *Ciudades que visitas:*")
         lines.append("   " + " · ".join(lugares))
         lines.append("")
 
     # Qué incluye
     incluye = v.get("incluye", [])
     if incluye:
-        lines.append("Tu tour incluye :: 🔍🗒️")
+        lines.append("✅ *Incluye:*")
         for item in incluye:
             lines.append(item)
         lines.append("")
@@ -93,21 +93,20 @@ def _formatear_viaje(v: dict) -> str:
     # Requisitos especiales
     requisitos = v.get("requisitos", [])
     if requisitos:
-        lines.append("⚠️ *Requisitos ::*")
+        lines.append("⚠️ *Requisitos:*")
         for req in requisitos:
             lines.append(f"   {req}")
         lines.append("")
 
-    # Notas libres
+    # Nota + reserva agrupadas al final
     notas = v.get("notas", "")
-    if notas:
-        lines.append(notas)
-        lines.append("")
-
-    # Reserva
     reserva = v.get("reserva_con", "")
-    if reserva and reserva != "No especificado":
-        lines.append(f"💵 {reserva}")
+    tiene_reserva = reserva and reserva != "No especificado"
+    if notas or tiene_reserva:
+        if notas:
+            lines.append(f"📌 {notas}")
+        if tiene_reserva:
+            lines.append(f"💵 {reserva}")
 
     return "\n".join(lines).strip()
 
@@ -116,7 +115,7 @@ def _resumen_por_tipo(tipo: str) -> str:
     viajes = [v for v in _leer_viajes() if v.get("tipo") == tipo]
     if not viajes:
         return "Por el momento no tenemos paquetes disponibles en esta categoría. Pronto traeremos novedades. 😊"
-    lineas = [f"• *{v['destino']}* — {_primera_fecha(v)}" for v in viajes]
+    lineas = [f"• {v['destino']}" for v in viajes]
     etiqueta = "🇲🇽 *Viajes Nacionales disponibles:*" if tipo == "nacional" else "🌎 *Viajes Internacionales disponibles:*"
     return (
         f"{etiqueta}\n\n"
