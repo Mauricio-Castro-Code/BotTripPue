@@ -526,6 +526,30 @@ def _enviar_seguimiento_8h(telefono: str) -> None:
     })
 
 
+def _enviar_seguimiento_derivacion(telefono: str) -> None:
+    """24h después de ser derivado — pregunta si el asesor lo atendió."""
+    _post_whatsapp({
+        "messaging_product": "whatsapp",
+        "to": telefono,
+        "type": "interactive",
+        "interactive": {
+            "type": "button",
+            "body": {
+                "text": (
+                    "¡Hola! 👋 Queremos asegurarnos de que recibiste la atención que mereces.\n\n"
+                    "¿Pudiste hablar con tu asesor? 😊"
+                )
+            },
+            "action": {
+                "buttons": [
+                    {"type": "reply", "reply": {"id": "btn_atendido",    "title": "Sí, me atendieron"}},
+                    {"type": "reply", "reply": {"id": "btn_no_atendido", "title": "No, necesito ayuda"}},
+                ]
+            },
+        },
+    })
+
+
 def _enviar_recordatorio_cierre(telefono: str, estado: str) -> None:
     """Segundo aviso a las 24h — advierte que el chat se cerrará en 2h."""
     nombre = "Puebla Travel Trips" if estado == "chat_nacional" else "LibertYa"
@@ -572,6 +596,25 @@ def manejar_boton(db: Session, telefono: str, boton_id: str) -> None:
         viajes_interes = get_viajes_interes(historial)
         estatus_derivado = "derivado_nacional" if estado in _ESTADOS_NACIONALES else "derivado_internacional"
         guardar_o_actualizar_lead(db, telefono, estatus=estatus_derivado)
+        duda = get_ultima_duda(historial) if estado in ("chat_cliente_nacional", "chat_cliente_internacional") else None
+        enviar_mensaje_texto(telefono, _mensaje_derivar(estado, viajes_interes, duda))
+        sesion.derivado_at = datetime.now(tz=_TZ_MX)
+        sesion.seguimiento_derivado = None
+        db.commit()
+
+    elif boton_id == "btn_atendido":
+        guardar_historial(db, sesion, set_estado([], "cerrada"))
+        sesion.sesion_cerrada = True
+        db.commit()
+        enviar_mensaje_texto(
+            telefono,
+            "¡Nos alegra mucho saberlo! 😊✈️\n\n"
+            "Que disfrutes mucho tu viaje. ¡Hasta pronto y buen viaje! 🌍",
+        )
+
+    elif boton_id == "btn_no_atendido":
+        historial = list(sesion.historial or [])
+        viajes_interes = get_viajes_interes(historial)
         duda = get_ultima_duda(historial) if estado in ("chat_cliente_nacional", "chat_cliente_internacional") else None
         enviar_mensaje_texto(telefono, _mensaje_derivar(estado, viajes_interes, duda))
 
@@ -642,6 +685,25 @@ def procesar_seguimientos(db: Session) -> None:
             logger.info("Chat cerrado automáticamente: %s", sesion.telefono_cliente)
         except Exception as exc:
             logger.error("Error auto-cierre a %s: %s", sesion.telefono_cliente, exc)
+
+    # ── 4. Seguimiento post-derivación: 24h después de ser derivado ──────────
+    sesiones_derivadas = (
+        db.query(SesionIA)
+        .filter(
+            SesionIA.sesion_cerrada == False,  # noqa: E712
+            SesionIA.derivado_at.isnot(None),
+            SesionIA.derivado_at < ahora - timedelta(hours=24),
+            SesionIA.seguimiento_derivado.is_(None),
+        )
+        .all()
+    )
+    for sesion in sesiones_derivadas:
+        try:
+            _enviar_seguimiento_derivacion(sesion.telefono_cliente)
+            sesion.seguimiento_derivado = ahora
+            db.commit()
+        except Exception as exc:
+            logger.error("Error seguimiento derivación a %s: %s", sesion.telefono_cliente, exc)
 
 
 # ─── Estadísticas para el dashboard ──────────────────────────────────────────

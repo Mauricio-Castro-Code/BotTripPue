@@ -29,9 +29,11 @@ CREATE TABLE sesiones_ia (
     telefono_cliente VARCHAR(20)  NOT NULL UNIQUE,
     historial        JSONB        NOT NULL DEFAULT '[]',
     ultimo_mensaje   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    seguimiento_1h   TIMESTAMPTZ,
-    seguimiento_3d   TIMESTAMPTZ,
-    sesion_cerrada   BOOLEAN      NOT NULL DEFAULT FALSE,
+    seguimiento_1h       TIMESTAMPTZ,
+    seguimiento_3d       TIMESTAMPTZ,
+    derivado_at          TIMESTAMPTZ,
+    seguimiento_derivado TIMESTAMPTZ,
+    sesion_cerrada       BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
