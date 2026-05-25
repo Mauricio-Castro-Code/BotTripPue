@@ -523,5 +523,220 @@
   "requisitos": ["Pasaporte vigente"],
   "reserva_con": "$5,000 MXN de anticipo, liquidar 1 mes antes",
   "notas": "Fechas abiertas a vacaciones del cliente. Promoción especial a partir de 4 personas."
+},
+{
+  "tipo": "nacional",
+  "destino": "Grutas de Tolantongo",
+  "estado": "Hidalgo",
+  "fechas": [],
+  "salidas": "Parque Juárez y Plaza Ánimas",
+  "precio": "$800",
+  "transporte": "Autobús redondo",
+  "horario_salida": null,
+  "horario_regreso": null,
+  "incluye": [
+    "🚍 Viaje redondo",
+    "🚑 Seguro de viajero",
+    "🎟️ Entrada a Tolantongo",
+    "⭐ Staff"
+  ],
+  "notas": "Reserva con el 50%. Acepta MSI con Visa y Mastercard.",
+  "reserva_con": "Depósito, transferencia o tarjeta (MSI)"
+},
+{
+  "tipo": "nacional",
+  "destino": "Isla de en Medio",
+  "estado": "Veracruz",
+  "fechas": [],
+  "salidas": "Parque Juárez y Plaza Ánimas",
+  "precio": "Desde $1,250",
+  "transporte": "Autobús redondo",
+  "horario_salida": "01:00 am",
+  "horario_regreso": "07:00 pm",
+  "incluye": [
+    "🚍 Transporte redondo",
+    "🚑 Seguro de viajero",
+    "🧑‍💼 Coordinador de viaje"
+  ],
+  "notas": "Reserva con el 50%. Acepta MSI con Visa y Mastercard.",
+  "reserva_con": "Depósito, transferencia o tarjeta (MSI)"
+},
+{
+  "tipo": "nacional",
+  "destino": "Acapulco Express",
+  "estado": "Guerrero",
+  "fechas": [],
+  "salidas": "Parque Juárez y Plaza Ánimas",
+  "precio": "$870",
+  "transporte": "Autobús redondo",
+  "horario_salida": "04:00 am",
+  "horario_regreso": "07:00 pm",
+  "incluye": [
+    "🚍 Viaje redondo",
+    "🚑 Seguro de viajero",
+    "📍 Traslados",
+    "⭐ Staff"
+  ],
+  "notas": "Precio regular. Reserva con el 50%.",
+  "reserva_con": "Depósito con el 50%"
+},
+{
+  "tipo": "nacional",
+  "destino": "San Miguel de Allende - Día de Muertos",
+  "estado": "Guanajuato",
+  "fechas": [],
+  "salidas": "Parque Juárez y Plaza Ánimas",
+  "precio": "$1,150",
+  "transporte": "Autobús redondo",
+  "horario_salida": null,
+  "horario_regreso": null,
+  "incluye": [
+    "🚍 Viaje redondo",
+    "🚑 Seguro de viajero",
+    "🪦 Visita a Panteón",
+    "⭐ Staff"
+  ],
+  "notas": "Excursión temática Día de Muertos. Reserva con el 50%.",
+  "reserva_con": "Depósito con el 50%"
+},
+{
+  "tipo": "nacional",
+  "destino": "Luciérnagas y Ex-Hacienda de Chiautla",
+  "estado": "Puebla",
+  "fechas": [],
+  "salidas": "Parque Juárez y Plaza Ánimas",
+  "precio": "$690",
+  "transporte": "Autobús redondo",
+  "horario_salida": "06:00 am",
+  "horario_regreso": "06:00 pm",
+  "incluye": [
+    "🚍 Viaje redondo",
+    "🚑 Seguro de viajero",
+    "🎟️ Entrada a santuario",
+    "🧑‍💼 Coordinador de grupo"
+  ],
+  "notas": "Reserva con el 50%. Acepta MSI con Visa y Mastercard.",
+  "reserva_con": "Depósito con el 50%"
+},
+{
+  "tipo": "nacional",
+  "destino": "El Rollo Parque Acuático",
+  "estado": "Morelos",
+  "fechas": [],
+  "salidas": null,
+  "precio": "$1,050",
+  "transporte": "Autobús redondo",
+  "horario_salida": null,
+  "horario_regreso": null,
+  "incluye": [
+    "🚍 Viaje redondo",
+    "🚑 Seguro de viajero",
+    "🎟️ Entrada",
+    "🧑‍💼 Coordinador de grupo"
+  ],
+  "notas": null,
+  "reserva_con": null
+},
+{
+  "tipo": "nacional",
+  "destino": "Las Estacas Parque Natural",
+  "estado": "Morelos",
+  "fechas": [],
+  "salidas": null,
+  "precio": "Desde $1,180",
+  "transporte": "Autobús redondo",
+  "horario_salida": null,
+  "horario_regreso": null,
+  "incluye": [
+    "🚍 Viaje redondo",
+    "🚑 Seguro de viajero",
+    "🎟️ Entrada",
+    "🧑‍💼 Coordinador de grupo"
+  ],
+  "notas": null,
+  "reserva_con": null
+},
+{
+  "tipo": "nacional",
+  "destino": "Ruta del Mezcal y Hierve el Agua",
+  "estado": "Oaxaca",
+  "fechas": [],
+  "salidas": "Plaza Ánimas y Parque Juárez",
+  "precio": "$980",
+  "transporte": "Autobús turístico redondo",
+  "horario_salida": "02:00 am",
+  "horario_regreso": "11:00 pm",
+  "incluye": [
+    "🚍 Transportación turística",
+    "🚑 Seguro de viajero",
+    "🎟️ Entrada Hierve el Agua",
+    "🧑‍💼 Coordinador de viaje"
+  ],
+  "notas": "Cupo limitado.",
+  "reserva_con": null
+},
+{
+  "tipo": "nacional",
+  "destino": "Huatulco, Oaxaca",
+  "estado": "Oaxaca",
+  "fechas": [],
+  "salidas": null,
+  "no_dias": "3 días / 2 noches",
+  "precio": "Desde $3,550 por persona",
+  "transporte": "Autobús redondo",
+  "incluye": [
+    "🚍 Viaje redondo con seguro de viajero a bordo",
+    "🧑‍💼 Coordinador de grupo",
+    "🏨 Hotel"
+  ],
+  "reserva_con": null
+},
+{
+  "tipo": "nacional",
+  "destino": "Ixtapa Zihuatanejo",
+  "estado": "Guerrero",
+  "fechas": [],
+  "salidas": null,
+  "no_dias": "3 días / 2 noches",
+  "precio": "$3,450 por persona",
+  "transporte": "Autobús redondo",
+  "incluye": [
+    "🚍 Viaje redondo con seguro de viajero a bordo",
+    "🧑‍💼 Coordinador de grupo",
+    "🏨 Hotel"
+  ],
+  "reserva_con": null
+},
+{
+  "tipo": "nacional",
+  "destino": "Puerto Escondido Express",
+  "estado": "Oaxaca",
+  "fechas": [],
+  "salidas": "Plaza Ánimas y Parque Juárez",
+  "no_dias": "2 días / 1 noche",
+  "precio": "Hab. doble $2,600 / Hab. triple $2,500 / Hab. cuádruple $2,200 / Niños (4-12 años) $2,000",
+  "transporte": "Autobús redondo",
+  "incluye": [
+    "🚍 Transporte redondo",
+    "🏨 Hospedaje",
+    "🧑‍💼 Coordinador de grupo"
+  ],
+  "reserva_con": null
+},
+{
+  "tipo": "nacional",
+  "destino": "Ruta del Mezcal",
+  "estado": "Oaxaca",
+  "fechas": [],
+  "salidas": null,
+  "no_dias": "1 día",
+  "precio": "$950 con entrada",
+  "transporte": "Autobús redondo",
+  "incluye": [
+    "🚍 Viaje redondo",
+    "🚑 Seguro de viajero",
+    "🧑‍💼 Coordinador de grupo"
+  ],
+  "reserva_con": null
 }
 ]
