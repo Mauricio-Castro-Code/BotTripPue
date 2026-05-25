@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 import requests
 from openai import OpenAI
 from urllib.parse import quote
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from .config import settings
@@ -52,10 +52,12 @@ _MENU_OPCIONES = (
 )
 
 _MENSAJE_BIENVENIDA = (
-    "¡Saludos viajero! 🌍✈️ Bienvenido a *LibertYa*, "
-    "la mejor agencia de viajes internacionales.\n\n"
-    "Soy tu asistente virtual y estoy aquí para ayudarte "
-    "a planear tu próxima aventura. 🧳🛫\n\n"
+    "¡Hola, viajero! 🌎✈️ Bienvenido a *LibertYa*, "
+    "la nueva línea de viajes internacionales de la familia "
+    "*Puebla Travel Trips*.\n\n"
+    "Seguimos siendo el mismo equipo y la misma confianza que ya conoces, "
+    "ahora listos para acompañarte a descubrir el mundo. 🧳🌍\n\n"
+    "Soy tu asistente virtual. ¿Qué destino internacional te interesa conocer?\n\n"
     + _MENU_OPCIONES
 )
 
@@ -69,7 +71,7 @@ _MENSAJE_DESPEDIDA = (
 _RESPUESTAS_FIJAS: dict[str, str] = {
     "3": (
         "¡Claro, con gusto te ayudo! 😊\n\n"
-        "¿Sobre qué viaje tienes una duda y en qué te puedo orientar?"
+        "¿Sobre qué viaje tienes una pregunta? Dime el destino o nombre del viaje que ya apartaste. ✈️"
     ),
     "4": (
         METODOS_PAGO
@@ -82,7 +84,11 @@ _RESPUESTAS_FIJAS: dict[str, str] = {
 }
 
 # Estados que continúan con OpenAI después de la respuesta inicial
-_ESTADOS_CON_IA = {"chat_nacional", "chat_internacional", "chat_cliente", "chat_grupo"}
+_ESTADOS_CON_IA = {
+    "chat_nacional", "chat_internacional",
+    "chat_cliente", "chat_cliente_nacional", "chat_cliente_internacional",
+    "chat_grupo",
+}
 
 # ─── Sistema prompt OpenAI ────────────────────────────────────────────────────
 
@@ -119,8 +125,23 @@ _CONTEXTO_POR_ESTADO: dict[str, str] = {
         "Responde SOLO con información de destinos. No incluyas links ni menciones al asesor."
     ),
     "chat_cliente": (
-        "El cliente ya tiene una compra o pregunta sobre pagos, requisitos o viajes grupales. "
-        "Responde con la información disponible. No incluyas links ni menciones al asesor."
+        "El cliente ya tiene una reserva y mencionó un viaje. Tu tarea en este turno es identificar "
+        "si el viaje es NACIONAL (dentro de México) o INTERNACIONAL (fuera de México) y responder su duda. "
+        "Usa el campo tipo_viaje para indicar 'nacional' o 'internacional' según corresponda. "
+        "Si la duda es básica y el paquete está en el catálogo, respóndela. "
+        "No incluyas links ni menciones al asesor."
+    ),
+    "chat_cliente_nacional": (
+        "El cliente tiene una reserva en un viaje NACIONAL (Puebla Travel Trips). "
+        "Responde sus dudas usando únicamente los datos del catálogo: fechas, precio, duración, qué incluye, anticipo. "
+        "Si la pregunta es sobre procesos internos, cambios de reserva o pagos específicos que no están en el catálogo, "
+        "indícale amablemente que un asesor lo ayudará mejor. No incluyas links ni menciones al asesor."
+    ),
+    "chat_cliente_internacional": (
+        "El cliente tiene una reserva en un viaje INTERNACIONAL (LibertYa). "
+        "Responde sus dudas usando únicamente los datos del catálogo: fechas, precio, duración, qué incluye, anticipo. "
+        "Si la pregunta es sobre procesos internos, cambios de reserva o pagos específicos que no están en el catálogo, "
+        "indícale amablemente que un asesor lo ayudará mejor. No incluyas links ni menciones al asesor."
     ),
 }
 
@@ -144,7 +165,7 @@ continuar     → Cualquier otra cosa: pregunta específica de un destino, comen
 
 Estado actual de la conversación: {estado}
 
-REGLA CRÍTICA: Si el estado es chat_nacional, chat_internacional, chat_cliente o chat_grupo,
+REGLA CRÍTICA: Si el estado es chat_nacional, chat_internacional, chat_cliente, chat_cliente_nacional, chat_cliente_internacional o chat_grupo,
 y el mensaje es una pregunta, comentario o duda sobre un destino o viaje (aunque contenga
 palabras cortas como "hi" o "hey" dentro de una oración en español), devuelve "continuar".
 
@@ -182,19 +203,37 @@ def clasificar_intencion(texto: str, estado: str) -> str:
         return "continuar"
 
 
+_ESTADOS_NACIONALES = {"chat_nacional", "chat_cliente_nacional"}
+_ESTADOS_INTERNACIONALES = {"chat_internacional", "chat_cliente_internacional", "chat_cliente"}
+
+
 def _numero_asesor(estado: str) -> str:
-    return NUMERO_ASESOR_NACIONAL if estado == "chat_nacional" else NUMERO_ASESOR_INTERNACIONAL
+    return NUMERO_ASESOR_NACIONAL if estado in _ESTADOS_NACIONALES else NUMERO_ASESOR_INTERNACIONAL
 
 
-def _mensaje_derivar(estado: str, viajes_interes: list[str] | None = None) -> str:
-    if estado == "chat_nacional":
+def get_ultima_duda(historial: list) -> str | None:
+    for msg in reversed(historial):
+        if msg.get("role") == "user":
+            return msg.get("content")
+    return None
+
+
+def _mensaje_derivar(
+    estado: str,
+    viajes_interes: list[str] | None = None,
+    duda_cliente: str | None = None,
+) -> str:
+    if estado in _ESTADOS_NACIONALES:
         nombre = "Puebla Travel Trips"
         numero = NUMERO_ASESOR_NACIONAL
     else:
         nombre = "LibertYa"
         numero = NUMERO_ASESOR_INTERNACIONAL
 
-    if viajes_interes:
+    if estado in ("chat_cliente_nacional", "chat_cliente_internacional") and duda_cliente:
+        texto_precar = f"Hola, tengo una reserva y tengo la siguiente duda: {duda_cliente}"
+        link = f"https://wa.me/{numero}?text={quote(texto_precar)}"
+    elif viajes_interes:
         if len(viajes_interes) == 1:
             detalle = viajes_interes[0]
         else:
@@ -330,6 +369,17 @@ _FUNCION_RESPONDER = {
                     "Null si solo está explorando o preguntando de forma general."
                 ),
             },
+            "tipo_viaje": {
+                "type": "string",
+                "enum": ["nacional", "internacional"],
+                "description": (
+                    "Tipo del viaje que menciona el cliente. "
+                    "'nacional' si el destino es dentro de México. "
+                    "'internacional' si el destino es fuera de México. "
+                    "Obligatorio cuando el estado sea 'chat_cliente' y el cliente mencione un viaje. "
+                    "Null si no se puede determinar."
+                ),
+            },
         },
         "required": ["respuesta"],
     },
@@ -366,8 +416,8 @@ def get_respuesta_opcion(opcion: str) -> str:
     return _RESPUESTAS_FIJAS.get(opcion, "")
 
 
-def generar_respuesta_ia(mensajes: list, estado: str = "menu") -> tuple[str, str | None, str | None, str | None]:
-    """Llama a OpenAI. Devuelve (respuesta, nombre_detectado, destino_detectado, viaje_interes)."""
+def generar_respuesta_ia(mensajes: list, estado: str = "menu") -> tuple[str, str | None, str | None, str | None, str | None]:
+    """Llama a OpenAI. Devuelve (respuesta, nombre_detectado, destino_detectado, viaje_interes, tipo_viaje)."""
     contexto = _CONTEXTO_POR_ESTADO.get(estado, "")
     paquetes_actuales = get_contexto_paquetes()
     sistema = (
@@ -389,6 +439,7 @@ def generar_respuesta_ia(mensajes: list, estado: str = "menu") -> tuple[str, str
         args.get("nombre_detectado"),
         args.get("destino_detectado"),
         args.get("viaje_interes"),
+        args.get("tipo_viaje"),
     )
 
 
@@ -419,17 +470,27 @@ def enviar_mensaje_texto(telefono: str, mensaje: str) -> None:
     })
 
 
-def enviar_botones_reserva(telefono: str) -> None:
+_ESTADOS_CLIENTE = {"chat_cliente", "chat_cliente_nacional", "chat_cliente_internacional"}
+
+
+def enviar_botones_reserva(telefono: str, estado: str = "") -> None:
+    if estado in _ESTADOS_CLIENTE:
+        titulo_accion = "Hablar con asesor"
+        cuerpo = "¿Necesitas hablar directamente con un asesor? 😊"
+    else:
+        titulo_accion = "Quiero reservar"
+        cuerpo = "¿Te gustaría dar el siguiente paso? 😊"
+
     _post_whatsapp({
         "messaging_product": "whatsapp",
         "to": telefono,
         "type": "interactive",
         "interactive": {
             "type": "button",
-            "body": {"text": "¿Te gustaría dar el siguiente paso? 😊"},
+            "body": {"text": cuerpo},
             "action": {
                 "buttons": [
-                    {"type": "reply", "reply": {"id": "btn_reservar", "title": "Quiero reservar"}},
+                    {"type": "reply", "reply": {"id": "btn_reservar", "title": titulo_accion}},
                     {"type": "reply", "reply": {"id": "btn_terminar", "title": "Terminar chat"}},
                 ]
             },
@@ -507,10 +568,12 @@ def manejar_boton(db: Session, telefono: str, boton_id: str) -> None:
         enviar_mensaje_texto(telefono, _MENSAJE_DESPEDIDA)
 
     elif boton_id in ("btn_asesor", "btn_reservar"):
-        viajes_interes = get_viajes_interes(list(sesion.historial or []))
-        estatus_derivado = "derivado_nacional" if estado == "chat_nacional" else "derivado_internacional"
+        historial = list(sesion.historial or [])
+        viajes_interes = get_viajes_interes(historial)
+        estatus_derivado = "derivado_nacional" if estado in _ESTADOS_NACIONALES else "derivado_internacional"
         guardar_o_actualizar_lead(db, telefono, estatus=estatus_derivado)
-        enviar_mensaje_texto(telefono, _mensaje_derivar(estado, viajes_interes))
+        duda = get_ultima_duda(historial) if estado in ("chat_cliente_nacional", "chat_cliente_internacional") else None
+        enviar_mensaje_texto(telefono, _mensaje_derivar(estado, viajes_interes, duda))
 
     elif boton_id == "btn_seguir":
         guardar_historial(db, sesion, set_estado(mensajes_openai(list(sesion.historial or [])), "menu"))
@@ -579,3 +642,47 @@ def procesar_seguimientos(db: Session) -> None:
             logger.info("Chat cerrado automáticamente: %s", sesion.telefono_cliente)
         except Exception as exc:
             logger.error("Error auto-cierre a %s: %s", sesion.telefono_cliente, exc)
+
+
+# ─── Estadísticas para el dashboard ──────────────────────────────────────────
+
+def get_estadisticas(db: Session) -> dict:
+    por_estatus_raw = (
+        db.query(Lead.estatus, func.count(Lead.id))
+        .group_by(Lead.estatus)
+        .all()
+    )
+    por_estatus = {e: c for e, c in por_estatus_raw}
+    total = sum(por_estatus.values())
+    derivados = (
+        por_estatus.get("derivado_nacional", 0)
+        + por_estatus.get("derivado_internacional", 0)
+    )
+    tasa = round(derivados / total * 100, 1) if total else 0.0
+
+    top_destinos = (
+        db.query(Lead.destino_interes, func.count(Lead.id).label("total"))
+        .filter(Lead.destino_interes.isnot(None))
+        .group_by(Lead.destino_interes)
+        .order_by(func.count(Lead.id).desc())
+        .limit(10)
+        .all()
+    )
+
+    sesiones_activas = (
+        db.query(func.count(SesionIA.id))
+        .filter(SesionIA.sesion_cerrada == False)  # noqa: E712
+        .scalar()
+    ) or 0
+
+    fecha = datetime.now(tz=_TZ_MX).strftime("%d/%m/%Y %H:%M")
+
+    return {
+        "total": total,
+        "por_estatus": por_estatus,
+        "derivados": derivados,
+        "tasa_conversion": tasa,
+        "top_destinos": list(top_destinos),
+        "sesiones_activas": sesiones_activas,
+        "fecha_actualizacion": fecha,
+    }

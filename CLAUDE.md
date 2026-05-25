@@ -23,6 +23,8 @@ ngrok http 8000
 curl -X POST "http://localhost:8000/cron/recordatorio?token=<WHATSAPP_VERIFY_TOKEN>"
 ```
 
+Deployment uses a `Procfile` (`web: uvicorn app.main:app --host 0.0.0.0 --port $PORT`). There are no automated tests.
+
 ## Architecture
 
 ```
@@ -46,7 +48,7 @@ APScheduler (every 5 min) → procesar_seguimientos()
 
 ### Session state machine
 
-State is encoded as a `{"role": "meta", "estado": "<state>"}` entry prepended to the `historial` JSONB array (alongside normal OpenAI `user`/`assistant` messages). `get_estado()` reads it; `set_estado()` replaces it.
+State is encoded as a `{"role": "meta", "estado": "<state>", "viajes_interes": [...]}` entry prepended to the `historial` JSONB array (alongside normal OpenAI `user`/`assistant` messages). `get_estado()` reads it; `set_estado()` replaces it.
 
 States:
 | State | Meaning |
@@ -54,22 +56,36 @@ States:
 | `menu` | Initial / greeted, waiting for topic choice |
 | `chat_nacional` | Client interested in domestic trips (Puebla Travel Trips) |
 | `chat_internacional` | Client interested in international trips (LibertYa) |
-| `chat_cliente` | Existing client with questions / payments / groups |
+| `chat_cliente` | Existing client — destination type not yet identified |
+| `chat_cliente_nacional` | Existing client with a national reservation |
+| `chat_cliente_internacional` | Existing client with an international reservation |
+| `chat_grupo` | Group booking inquiry |
 | `cerrada` | Session closed (no follow-ups sent) |
 
-Only states in `_ESTADOS_CON_IA` (`chat_nacional`, `chat_internacional`, `chat_cliente`) send further messages through OpenAI and trigger interactive booking buttons after each reply.
+Only states in `_ESTADOS_CON_IA` (`chat_nacional`, `chat_internacional`, `chat_cliente`, `chat_cliente_nacional`, `chat_cliente_internacional`, `chat_grupo`) send further messages through OpenAI and trigger interactive booking buttons after each reply.
+
+When a closed session receives a new message, `sesion_cerrada`, `seguimiento_1h`, and `seguimiento_3d` are reset before processing.
+
+### `viajes_interes` tracking
+
+The meta entry stores up to 3 specific trips a client expressed interest in (format: `"Destino (salida DD MMM, $precio)"`). These are passed to `_mensaje_derivar()` to pre-fill the WhatsApp deep link text when the client clicks a booking button.
 
 ### Intent classifier
 
-`clasificar_intencion(texto, estado)` calls `gpt-4o-mini` with `temperature=0` to classify into one of 8 intents. When already in a `chat_*` state, almost everything should classify as `continuar` (rule enforced in the system prompt). On API failure, falls back to `continuar`.
+`clasificar_intencion(texto, estado)` calls `gpt-4o-mini` with `temperature=0` to classify into one of 8 intents. When already in a `chat_*` state, almost everything should classify as `continuar` (rule enforced in the system prompt). Numeric inputs `"1"`–`"4"` are shortcut-matched directly in `menu` state without an API call. On API failure, falls back to `continuar`.
 
 ### Two-advisor routing
 
-Each session state maps to an advisor number:
-- `chat_nacional` → `NUMERO_ASESOR_NACIONAL` (Puebla Travel Trips)
-- everything else → `NUMERO_ASESOR_INTERNACIONAL` (LibertYa)
+`_numero_asesor(estado)` uses two sets: `_ESTADOS_NACIONALES` (`chat_nacional`, `chat_cliente_nacional`) → `NUMERO_ASESOR_NACIONAL` (Puebla Travel Trips); everything else → `NUMERO_ASESOR_INTERNACIONAL` (LibertYa). Note: `chat_cliente` defaults to the international advisor until the sub-state is resolved.
 
-Buttons `btn_reservar` / `btn_asesor` send a WhatsApp deep link to the appropriate advisor.
+`_mensaje_derivar()` builds a WhatsApp deep link (`wa.me/<numero>?text=...`) pre-filled with the client's destinations of interest, or their last question if they're an existing client.
+
+### Interactive buttons
+
+Four button IDs are used across the app:
+- `btn_reservar` — triggers `_mensaje_derivar()` with advisor deep link
+- `btn_terminar` / `btn_no_interes` — close the session and send farewell
+- `btn_seguir` — resets to `menu` state and shows `_MENU_OPCIONES` (only in 8h follow-up)
 
 ## Data layer
 
@@ -77,21 +93,25 @@ Buttons `btn_reservar` / `btn_asesor` send a WhatsApp deep link to the appropria
 ```json
 {
   "tipo": "nacional" | "internacional",
-  "destino": "...", "fecha_salida": "...", "salidas": "...",
+  "destino": "...", "salidas": "...",
   "no_dias": "...", "precio": "...", "transporte": "...",
   "incluye": ["..."], "reserva_con": "..."
 }
 ```
+Optional fields: `fechas` (list of departure dates, replaces `fecha_salida`), `estado` (geographic region), `horario_salida`, `horario_regreso` (for day excursions), `notas`, `lugares` (cities visited, for international).
 
-**`data/paquetes.py`** — reads `viajes.json` on every call (no caching, so edits to the JSON are reflected without restart). Exports:
-- `get_resumen_nacionales()` / `get_top10_internacionales()` — short lists for the initial menu response
-- `get_contexto_paquetes()` — full detail injected as context into every OpenAI call
-- `METODOS_PAGO`, `REQUISITOS` — static strings
+**`data/paquetes.py`** — reads `viajes.json` on every call (no caching, so edits to the JSON are reflected without restart). Key exports:
+- `get_resumen_nacionales()` / `get_resumen_internacionales()` — bullet-list of destinations for menu option responses
+- `get_top10_internacionales()` — deduplicated top-10 international list (not currently used in the main flow)
+- `get_contexto_paquetes()` — full formatted detail for all trips, injected as context into every OpenAI call
+- `METODOS_PAGO`, `REQUISITOS`, `UBICACION` — static strings
+
+Menu options 1 and 2 (`get_respuesta_opcion`) call `get_resumen_nacionales()`/`get_resumen_internacionales()`. Options 3 and 4 are served from `_RESPUESTAS_FIJAS` dict in `services.py`.
 
 ## Database
 
 Two tables (see [db/schema.sql](db/schema.sql)):
-- **`sesiones_ia`** — one row per phone; `historial` JSONB stores full conversation; `seguimiento_1h` / `seguimiento_3d` track follow-up timestamps
+- **`sesiones_ia`** — one row per phone; `historial` JSONB stores full conversation; `seguimiento_1h` tracks when the 8h follow-up was sent; `seguimiento_3d` tracks when the 24h follow-up was sent (column names are misleading relative to their semantic purpose)
 - **`leads`** — one row per phone; `estatus` progresses through: `nuevo` → `informado` → `derivado_nacional` | `derivado_internacional` | `no_interesado`
 
 ## Variables de entorno
@@ -118,5 +138,5 @@ BLOCKED_PHONES=521XXXXXXXXXX,521YYYYYYYYYY   # comma-separated
 
 - Phones in `BLOCKED_PHONES` are ignored before any DB write
 - The bot never fabricates prices or destinations — OpenAI only has what's in `viajes.json`
-- Reservations are never automated — `btn_reservar` sends a link to a human advisor
+- Reservations are never automated — booking buttons send a pre-filled WhatsApp deep link to a human advisor
 - Sessions auto-close 2h after the 24h warning if no reply is received

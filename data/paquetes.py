@@ -167,7 +167,7 @@ METODOS_PAGO = """
 
 📌 *Política de apartado:*
 Se requiere un anticipo del 30% para confirmar tu lugar.
-El 70% restante se liquida 15 días antes de la salida.
+El 70% restante se liquida 21 días antes de la salida.
 
 ¿Tienes alguna duda sobre los pagos? Con gusto te ayudamos 😊
 """
@@ -193,10 +193,10 @@ REQUISITOS = """
 # ─── Ubicación — reemplaza el link con el de tu oficina real ──────────────────
 
 UBICACION = """
-📍 *Visítanos en Puebla Travel Trips*
+📍 *Visítanos en nuestras oficinas  de Puebla Travel Trips*
 
 🗺️ Encuéntranos aquí:
-https://maps.app.goo.gl/XXXXXXXXXXXXXX
+https://maps.app.goo.gl/98v6GQ9bNC1ygsTS9
 
 ⏰ *Horario de atención:*
 Lunes a Viernes: 9:00 am – 7:00 pm
