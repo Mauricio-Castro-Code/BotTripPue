@@ -738,5 +738,43 @@
     "🧑‍💼 Coordinador de grupo"
   ],
   "reserva_con": null
+},
+{
+  "tipo": "nacional",
+  "destino": "Sótano de Popocatl",
+  "estado": "Puebla",
+  "fechas": ["18 de julio"],
+  "salidas": "Walmart Ánimas y Parque Juárez",
+  "precio": "$2,150",
+  "transporte": "Transportación turística",
+  "horario_salida": "02:00 am",
+  "horario_regreso": "11:00 pm",
+  "incluye": [
+    "🎟️ Entrada y Tours",
+    "🧑‍💼 Coordinador de viaje",
+    "🚍 Transportación turística",
+    "🚑 Seguro de viajero en transportación"
+  ],
+  "notas": "Cupo limitado.",
+  "reserva_con": null
+},
+{
+  "tipo": "nacional",
+  "destino": "Six Flags México",
+  "estado": "Ciudad de México",
+  "fechas": ["5 de junio", "4 de julio"],
+  "salidas": "Walmart Ánimas y Parque Juárez",
+  "precio": "$1,350 adultos / $1,050 niños (4 a 11 años)",
+  "transporte": "Transportación turística",
+  "horario_salida": "07:00 am",
+  "horario_regreso": "11:00 pm",
+  "incluye": [
+    "🎟️ Entrada a Six Flags",
+    "🧑‍💼 Coordinador de viaje",
+    "🚍 Transportación turística",
+    "🚑 Seguro de viajero en transportación"
+  ],
+  "notas": "Cupo limitado.",
+  "reserva_con": null
 }
 ]
