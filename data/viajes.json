@@ -1,20 +1,26 @@
 [
-  {
-    "tipo": "nacional",
-    "destino": "Huatulco, Oaxaca",
-    "estado": "Oaxaca",
-    "fechas": ["17 de mayo 2026"],
-    "salidas": "Parque Juárez y 5 de Mayo",
-    "no_dias": "3 días / 2 noches",
-    "precio": "Desde $3,550 MXN por persona",
-    "transporte": "Vuelo redondo desde Puebla",
-    "incluye": [
-      "✈️ Vuelo redondo",
-      "🏨 Hotel 3 estrellas",
-      "🚑 Seguro de viajero"
-    ],
-    "reserva_con": "$1,000 MXN de anticipo"
-  },
+{
+  "tipo": "nacional",
+  "destino": "Huatulco - Playas de Oaxaca Vacaciones",
+  "estado": "Oaxaca",
+  "fechas": ["25 al 27 de julio"],
+  "salidas": "Walmart Ánimas y Parque Juárez",
+  "no_dias": "3 días / 2 noches",
+  "precio": "Hab. doble $3,950 / Hab. triple $3,800 / Hab. cuádruple $3,600 / Niños (4-12 años) $3,100",
+  "transporte": "Transportación turística",
+  "horario_salida": "08:00 pm",
+  "horario_regreso": "05:00 am",
+  "incluye": [
+    "🏨 Hotel 3 estrellas",
+    "🍿 Snacks",
+    "🏖️ Visitas a las playas",
+    "🧑‍💼 Coordinador de viaje",
+    "🚍 Transportación turística",
+    "🚑 Seguro de viajero en transportación"
+  ],
+  "notas": "Cupo limitado.",
+  "reserva_con": null
+},
   {
   "tipo": "internacional",
   "destino": "Australia",
@@ -677,34 +683,24 @@
 },
 {
   "tipo": "nacional",
-  "destino": "Huatulco, Oaxaca",
-  "estado": "Oaxaca",
-  "fechas": [],
-  "salidas": null,
-  "no_dias": "3 días / 2 noches",
-  "precio": "Desde $3,550 por persona",
-  "transporte": "Autobús redondo",
-  "incluye": [
-    "🚍 Viaje redondo con seguro de viajero a bordo",
-    "🧑‍💼 Coordinador de grupo",
-    "🏨 Hotel"
-  ],
-  "reserva_con": null
-},
-{
-  "tipo": "nacional",
-  "destino": "Ixtapa Zihuatanejo",
+  "destino": "Ixtapa Zihuatanejo Vacaciones",
   "estado": "Guerrero",
-  "fechas": [],
-  "salidas": null,
+  "fechas": ["25 al 27 de julio"],
+  "salidas": "Walmart Ánimas y Parque Juárez",
   "no_dias": "3 días / 2 noches",
-  "precio": "$3,450 por persona",
-  "transporte": "Autobús redondo",
+  "precio": "Hab. doble $3,850 / Hab. triple $3,700 / Hab. cuádruple $3,500 / Niños (4-12 años) $3,000",
+  "transporte": "Transportación turística",
+  "horario_salida": "10:00 pm",
+  "horario_regreso": "05:00 am",
   "incluye": [
-    "🚍 Viaje redondo con seguro de viajero a bordo",
-    "🧑‍💼 Coordinador de grupo",
-    "🏨 Hotel"
+    "🏨 Hotel 3 estrellas",
+    "🍿 Snacks",
+    "🏖️ Visitas a las playas",
+    "🧑‍💼 Coordinador de viaje",
+    "🚍 Transportación turística",
+    "🚑 Seguro de viajero en transportación"
   ],
+  "notas": "Cupo limitado.",
   "reserva_con": null
 },
 {
