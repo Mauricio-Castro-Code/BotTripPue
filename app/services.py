@@ -745,6 +745,18 @@ def get_estadisticas(db: Session) -> dict:
         .scalar()
     ) or 0
 
+    fecha = datetime.now(tz=_TZ_MX).strftime("%d/%m/%Y %H:%M")
+
+    return {
+        "total": total,
+        "por_estatus": por_estatus,
+        "derivados": derivados,
+        "tasa_conversion": tasa,
+        "top_destinos": list(top_destinos),
+        "sesiones_activas": sesiones_activas,
+        "fecha_actualizacion": fecha,
+    }
+
 
 def broadcast_mensaje(db: Session, mensaje: str) -> dict:
     sesiones = (
@@ -764,15 +776,3 @@ def broadcast_mensaje(db: Session, mensaje: str) -> dict:
             logger.error("Error en broadcast a %s: %s", sesion.telefono_cliente, exc)
             fallidos += 1
     return {"enviados": enviados, "fallidos": fallidos, "total": len(sesiones)}
-
-    fecha = datetime.now(tz=_TZ_MX).strftime("%d/%m/%Y %H:%M")
-
-    return {
-        "total": total,
-        "por_estatus": por_estatus,
-        "derivados": derivados,
-        "tasa_conversion": tasa,
-        "top_destinos": list(top_destinos),
-        "sesiones_activas": sesiones_activas,
-        "fecha_actualizacion": fecha,
-    }
