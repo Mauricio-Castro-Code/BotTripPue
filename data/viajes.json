@@ -772,5 +772,25 @@
   ],
   "notas": "Cupo limitado.",
   "reserva_con": null
+},
+{
+  "tipo": "nacional",
+  "destino": "Tepoztlán y Playa Vikingos",
+  "estado": "Morelos",
+  "fechas": ["31 de mayo"],
+  "salidas": "Parque Juárez y Walmart Las Ánimas",
+  "precio": "$600",
+  "transporte": "Autobús redondo",
+  "horario_salida": "06:30 am",
+  "horario_regreso": "10:30 pm",
+  "incluye": [
+    "🤠 Guía líder",
+    "🚍 Transporte redondo",
+    "🚑 Seguro de viajero",
+    "☘️ Visita Tepoztlán",
+    "🍸 Visita Playa Vikingos"
+  ],
+  "notas": "Cover en Playa Vikingos reembolsable en comidas y bebidas.",
+  "reserva_con": "Depósito, transferencia o efectivo"
 }
 ]

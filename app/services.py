@@ -106,6 +106,14 @@ IMPORTANTE: Nunca incluyas links de contacto ni menciones al asesor en tu respue
 """
 
 _CONTEXTO_POR_ESTADO: dict[str, str] = {
+    "menu": (
+        "El cliente acaba de iniciar el chat y preguntó directamente por un destino específico "
+        "sin pasar por el menú principal. Responde su pregunta con la información del catálogo. "
+        "Si el destino es dentro de México, usa tipo_viaje='nacional'. "
+        "Si es fuera de México, usa tipo_viaje='internacional'. "
+        "Si el destino no está en el catálogo, díselo amablemente y ofrece alternativas similares. "
+        "No incluyas links ni menciones al asesor."
+    ),
     "chat_nacional": (
         "El cliente está interesado en viajes NACIONALES (Puebla Travel Trips). "
         "Ya se le preguntó qué tipo de viaje le interesa. Sigue estas reglas:\n"
@@ -736,6 +744,26 @@ def get_estadisticas(db: Session) -> dict:
         .filter(SesionIA.sesion_cerrada == False)  # noqa: E712
         .scalar()
     ) or 0
+
+
+def broadcast_mensaje(db: Session, mensaje: str) -> dict:
+    sesiones = (
+        db.query(SesionIA)
+        .filter(SesionIA.sesion_cerrada == False)  # noqa: E712
+        .all()
+    )
+    enviados = 0
+    fallidos = 0
+    for sesion in sesiones:
+        try:
+            enviar_mensaje_texto(sesion.telefono_cliente, mensaje)
+            estado = get_estado(list(sesion.historial or []))
+            enviar_botones_reserva(sesion.telefono_cliente, estado)
+            enviados += 1
+        except Exception as exc:
+            logger.error("Error en broadcast a %s: %s", sesion.telefono_cliente, exc)
+            fallidos += 1
+    return {"enviados": enviados, "fallidos": fallidos, "total": len(sesiones)}
 
     fecha = datetime.now(tz=_TZ_MX).strftime("%d/%m/%Y %H:%M")
 

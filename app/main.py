@@ -16,8 +16,9 @@ from sqlalchemy.orm import Session
 
 from .config import settings
 from .database import SessionLocal, get_db
-from .schemas import WhatsAppWebhookPayload
+from .schemas import BroadcastRequest, WhatsAppWebhookPayload
 from .services import (
+    broadcast_mensaje,
     _MENSAJE_BIENVENIDA,
     _MENSAJE_DESPEDIDA,
     _MENU_OPCIONES,
@@ -120,6 +121,7 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
         sesion.sesion_cerrada = False
         sesion.seguimiento_1h = None
         sesion.seguimiento_3d = None
+        sesion.historial = []
         db.commit()
     historial = list(sesion.historial or [])
     estado = get_estado(historial)
@@ -172,6 +174,23 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
         enviar_mensaje_texto(telefono, respuesta)
         return
 
+    if intencion == "continuar" and estado == "menu":
+        msgs = preparar_historial([], texto)
+        respuesta, nombre, destino, viaje_nuevo, tipo_viaje = generar_respuesta_ia(msgs, "menu")
+        nuevo_estado = (
+            "chat_nacional" if tipo_viaje == "nacional"
+            else "chat_internacional" if tipo_viaje == "internacional"
+            else "menu"
+        )
+        msgs.append({"role": "assistant", "content": respuesta})
+        viajes_actuales = [viaje_nuevo] if viaje_nuevo else []
+        guardar_historial(db, sesion, set_estado(msgs, nuevo_estado, viajes_actuales or None))
+        guardar_o_actualizar_lead(db, telefono, nombre=nombre, destino=destino, estatus="informado")
+        enviar_mensaje_texto(telefono, respuesta)
+        if nuevo_estado in _ESTADOS_CON_IA:
+            enviar_botones_reserva(telefono, nuevo_estado)
+        return
+
     enviar_mensaje_texto(
         telefono,
         "¡Hmm, no entendí bien! 😊 ¿Sobre qué te puedo ayudar?\n\n" + _MENU_OPCIONES,
@@ -192,6 +211,18 @@ def cron_recordatorio(
         raise HTTPException(status_code=403, detail="Token inválido")
     procesar_seguimientos(db)
     return {"status": "ok"}
+
+
+@app.post("/admin/broadcast")
+def enviar_broadcast(
+    body: BroadcastRequest,
+    token: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    if token != settings.WHATSAPP_VERIFY_TOKEN:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    resultado = broadcast_mensaje(db, body.mensaje)
+    return resultado
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

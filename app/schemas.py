@@ -63,3 +63,7 @@ class WaEntry(BaseModel):
 class WhatsAppWebhookPayload(BaseModel):
     object: str | None = None
     entry: list[WaEntry] | None = None
+
+
+class BroadcastRequest(BaseModel):
+    mensaje: str
