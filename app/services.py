@@ -103,6 +103,9 @@ Cuando un cliente pregunte por un destino o paquete, busca en la sección PAQUET
 NUNCA inventes precios, fechas, transportes ni contenidos de un paquete que no estén literalmente en PAQUETES DISPONIBLES.
 
 IMPORTANTE: Nunca incluyas links de contacto ni menciones al asesor en tu respuesta. Solo proporciona información del destino o paquete. Los botones de acción los maneja el sistema automáticamente.
+
+URGENCIA Y CONVERSIÓN:
+Cuando el cliente muestre interés concreto en un paquete específico, añade al final de tu respuesta una frase de urgencia suave y natural. Ejemplos: "Este destino es muy solicitado y los lugares se llenan rápido, ¡te recomendamos apartar pronto! 🙌" o "Los cupos para esta salida son limitados, conviene asegurar tu lugar con anticipación. ✈️". No inventes números exactos de disponibilidad ni datos que no estén en el catálogo.
 """
 
 _CONTEXTO_POR_ESTADO: dict[str, str] = {
@@ -486,8 +489,8 @@ def enviar_botones_reserva(telefono: str, estado: str = "") -> None:
         titulo_accion = "Hablar con asesor"
         cuerpo = "¿Necesitas hablar directamente con un asesor? 😊"
     else:
-        titulo_accion = "Quiero reservar"
-        cuerpo = "¿Te gustaría dar el siguiente paso? 😊"
+        titulo_accion = "Apartar mi lugar"
+        cuerpo = "¿Listo para asegurar tu lugar? Los cupos son limitados 🙌"
 
     _post_whatsapp({
         "messaging_product": "whatsapp",
@@ -499,7 +502,7 @@ def enviar_botones_reserva(telefono: str, estado: str = "") -> None:
             "action": {
                 "buttons": [
                     {"type": "reply", "reply": {"id": "btn_reservar", "title": titulo_accion}},
-                    {"type": "reply", "reply": {"id": "btn_terminar", "title": "Terminar chat"}},
+                    {"type": "reply", "reply": {"id": "btn_terminar", "title": "Ya no me interesa"}},
                 ]
             },
         },
@@ -634,12 +637,12 @@ def manejar_boton(db: Session, telefono: str, boton_id: str) -> None:
 def procesar_seguimientos(db: Session) -> None:
     ahora = datetime.now(tz=_TZ_MX)
 
-    # ── 1. Seguimiento 8h: primer aviso tras 8h de inactividad ───────────────
+    # ── 1. Seguimiento 2h: primer aviso tras 2h de inactividad ───────────────
     sesiones_8h = (
         db.query(SesionIA)
         .filter(
             SesionIA.sesion_cerrada == False,  # noqa: E712
-            SesionIA.ultimo_mensaje < ahora - timedelta(hours=8),
+            SesionIA.ultimo_mensaje < ahora - timedelta(hours=2),
             or_(
                 SesionIA.seguimiento_1h.is_(None),
                 SesionIA.seguimiento_1h < SesionIA.ultimo_mensaje,
