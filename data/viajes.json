@@ -534,20 +534,20 @@
   "tipo": "nacional",
   "destino": "Grutas de Tolantongo",
   "estado": "Hidalgo",
-  "fechas": [],
-  "salidas": "Parque Juárez y Plaza Ánimas",
-  "precio": "$800",
-  "transporte": "Autobús redondo",
-  "horario_salida": null,
-  "horario_regreso": null,
+  "fechas": ["7 de junio"],
+  "salidas": "Walmart Ánimas y Parque Juárez",
+  "precio": "$850",
+  "transporte": "Transportación turística",
+  "horario_salida": "02:00 am",
+  "horario_regreso": "11:00 pm",
   "incluye": [
-    "🚍 Viaje redondo",
-    "🚑 Seguro de viajero",
-    "🎟️ Entrada a Tolantongo",
-    "⭐ Staff"
+    "🎟️ Entrada",
+    "🧑‍💼 Coordinador de viaje",
+    "🚍 Transportación turística",
+    "🚑 Seguro de viajero en transportación"
   ],
-  "notas": "Reserva con el 50%. Acepta MSI con Visa y Mastercard.",
-  "reserva_con": "Depósito, transferencia o tarjeta (MSI)"
+  "notas": "Cupo limitado.",
+  "reserva_con": null
 },
 {
   "tipo": "nacional",
@@ -701,23 +701,29 @@
     "🚑 Seguro de viajero en transportación"
   ],
   "notas": "Cupo limitado.",
-  "reserva_con": null
+  "reserva_con": "Depósito con el 50%"
 },
 {
   "tipo": "nacional",
-  "destino": "Puerto Escondido Express",
+  "destino": "Puerto Escondido - Playas de Oaxaca Vacaciones",
   "estado": "Oaxaca",
-  "fechas": [],
-  "salidas": "Plaza Ánimas y Parque Juárez",
-  "no_dias": "2 días / 1 noche",
-  "precio": "Hab. doble $2,600 / Hab. triple $2,500 / Hab. cuádruple $2,200 / Niños (4-12 años) $2,000",
-  "transporte": "Autobús redondo",
+  "fechas": ["25 al 27 de julio"],
+  "salidas": "Walmart Ánimas y Parque Juárez",
+  "no_dias": "3 días / 2 noches",
+  "precio": "Hab. doble $3,950 / Hab. triple $3,800 / Hab. cuádruple $3,600 / Niños (4-12 años) $3,100",
+  "transporte": "Transportación turística",
+  "horario_salida": "08:00 pm",
+  "horario_regreso": "05:00 am",
   "incluye": [
-    "🚍 Transporte redondo",
-    "🏨 Hospedaje",
-    "🧑‍💼 Coordinador de grupo"
+    "🏨 Hotel 3 estrellas",
+    "🍿 Snacks",
+    "🏖️ Visitas a las playas",
+    "🧑‍💼 Coordinador de viaje",
+    "🚍 Transportación turística",
+    "🚑 Seguro de viajero en transportación"
   ],
-  "reserva_con": null
+  "notas": "Cupo limitado.",
+  "reserva_con": "Depósito con el 50%"
 },
 {
   "tipo": "nacional",
