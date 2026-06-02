@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 import requests
 from openai import OpenAI
 from urllib.parse import quote
-from sqlalchemy import func, or_
+from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Session
 
 from .config import settings
@@ -720,6 +720,9 @@ def procesar_seguimientos(db: Session) -> None:
 # ─── Estadísticas para el dashboard ──────────────────────────────────────────
 
 def get_estadisticas(db: Session) -> dict:
+    ahora_dt = datetime.now(tz=_TZ_MX)
+
+    # ── Resumen por estatus ───────────────────────────────────────────────────
     por_estatus_raw = (
         db.query(Lead.estatus, func.count(Lead.id))
         .group_by(Lead.estatus)
@@ -733,6 +736,7 @@ def get_estadisticas(db: Session) -> dict:
     )
     tasa = round(derivados / total * 100, 1) if total else 0.0
 
+    # ── Top destinos ──────────────────────────────────────────────────────────
     top_destinos = (
         db.query(Lead.destino_interes, func.count(Lead.id).label("total"))
         .filter(Lead.destino_interes.isnot(None))
@@ -742,13 +746,75 @@ def get_estadisticas(db: Session) -> dict:
         .all()
     )
 
+    # ── Sesiones activas (conteo) ─────────────────────────────────────────────
     sesiones_activas = (
         db.query(func.count(SesionIA.id))
         .filter(SesionIA.sesion_cerrada == False)  # noqa: E712
         .scalar()
     ) or 0
 
-    fecha = datetime.now(tz=_TZ_MX).strftime("%d/%m/%Y %H:%M")
+    # ── Actividad últimos 7 días ──────────────────────────────────────────────
+    hace_7 = ahora_dt - timedelta(days=6)
+    leads_dia_raw = (
+        db.query(
+            func.date(Lead.created_at).label("dia"),
+            func.count(Lead.id).label("total"),
+            func.sum(
+                case((Lead.estatus.in_(["derivado_nacional", "derivado_internacional"]), 1), else_=0)
+            ).label("derivados"),
+        )
+        .filter(Lead.created_at >= hace_7)
+        .group_by(func.date(Lead.created_at))
+        .order_by(func.date(Lead.created_at))
+        .all()
+    )
+    dias_dict = {str(r.dia): {"total": r.total, "derivados": int(r.derivados or 0)} for r in leads_dia_raw}
+    leads_por_dia = []
+    for i in range(6, -1, -1):
+        dia = (ahora_dt - timedelta(days=i)).date()
+        d = dias_dict.get(str(dia), {"total": 0, "derivados": 0})
+        leads_por_dia.append({"dia": dia.strftime("%d/%m"), "total": d["total"], "derivados": d["derivados"]})
+
+    # ── Detalle de sesiones activas ───────────────────────────────────────────
+    activas_raw = (
+        db.query(SesionIA, Lead)
+        .outerjoin(Lead, Lead.telefono == SesionIA.telefono_cliente)
+        .filter(SesionIA.sesion_cerrada == False)  # noqa: E712
+        .order_by(SesionIA.ultimo_mensaje.desc())
+        .all()
+    )
+    detalle_activas = []
+    for s, l in activas_raw:
+        um = s.ultimo_mensaje
+        if um and um.tzinfo is None:
+            um = um.replace(tzinfo=_TZ_MX)
+        mins = int((ahora_dt - um).total_seconds() / 60) if um else 0
+        if mins < 60:
+            ultima = f"hace {mins}m"
+        elif mins < 1440:
+            ultima = f"hace {mins // 60}h"
+        else:
+            ultima = f"hace {mins // 1440}d"
+        detalle_activas.append({
+            "tel": f"***{s.telefono_cliente[-4:]}",
+            "nombre": (l.nombre or "—") if l else "—",
+            "destino": (l.destino_interes or "—") if l else "—",
+            "estatus": l.estatus if l else "nuevo",
+            "estado_bot": get_estado(list(s.historial or [])),
+            "ultima": ultima,
+        })
+
+    # ── Leads recientes ───────────────────────────────────────────────────────
+    leads_recientes = [
+        {
+            "tel": f"***{l.telefono[-4:]}",
+            "nombre": l.nombre or "—",
+            "destino": l.destino_interes or "—",
+            "estatus": l.estatus,
+            "fecha": l.created_at.strftime("%d/%m %H:%M") if l.created_at else "—",
+        }
+        for l in db.query(Lead).order_by(Lead.created_at.desc()).limit(15).all()
+    ]
 
     return {
         "total": total,
@@ -757,7 +823,10 @@ def get_estadisticas(db: Session) -> dict:
         "tasa_conversion": tasa,
         "top_destinos": list(top_destinos),
         "sesiones_activas": sesiones_activas,
-        "fecha_actualizacion": fecha,
+        "leads_por_dia": leads_por_dia,
+        "detalle_activas": detalle_activas,
+        "leads_recientes": leads_recientes,
+        "fecha_actualizacion": ahora_dt.strftime("%d/%m/%Y %H:%M"),
     }
 
 

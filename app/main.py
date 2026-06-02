@@ -236,6 +236,31 @@ def dashboard(
     return HTMLResponse(content=_render_dashboard(stats))
 
 
+_ESTATUS_LABEL = {
+    "nuevo": ("Nuevo", "#1565c0", "#e3f2fd"),
+    "informado": ("Informado", "#f57f17", "#fff8e1"),
+    "derivado_nacional": ("Derivado ✓", "#2e7d32", "#e8f5e9"),
+    "derivado_internacional": ("Derivado ✓", "#1b5e20", "#c8e6c9"),
+    "no_interesado": ("No interesó", "#b71c1c", "#fce4ec"),
+}
+
+_ESTADO_BOT_LABEL = {
+    "menu": "Menú",
+    "chat_nacional": "Viajes nacionales",
+    "chat_internacional": "Viajes internacionales",
+    "chat_cliente": "Cliente existente",
+    "chat_cliente_nacional": "Cliente nacional",
+    "chat_cliente_internacional": "Cliente internacional",
+    "chat_grupo": "Grupo",
+    "cerrada": "Cerrada",
+}
+
+
+def _badge(estatus: str) -> str:
+    label, color, bg = _ESTATUS_LABEL.get(estatus, (estatus, "#888", "#f0f2f5"))
+    return f'<span style="background:{bg};color:{color};padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:600">{label}</span>'
+
+
 def _render_dashboard(stats: dict) -> str:
     por_estatus = stats["por_estatus"]
     total = stats["total"]
@@ -243,16 +268,16 @@ def _render_dashboard(stats: dict) -> str:
     def pct(n: int) -> float:
         return round(n / total * 100, 1) if total else 0.0
 
+    # ── Barras de estatus ─────────────────────────────────────────────────────
     estatuses = [
-        ("nuevo",                  "Nuevos",                  "#1565c0", "#e3f2fd"),
-        ("informado",              "Informados",               "#f57f17", "#fff8e1"),
-        ("derivado_nacional",      "Derivados Nacional",       "#2e7d32", "#e8f5e9"),
-        ("derivado_internacional", "Derivados Internacional",  "#1b5e20", "#c8e6c9"),
-        ("no_interesado",          "No interesados",           "#b71c1c", "#fce4ec"),
+        ("nuevo",                  "Nuevos",                  "#1565c0"),
+        ("informado",              "Informados",               "#f57f17"),
+        ("derivado_nacional",      "Derivados Nacional",       "#2e7d32"),
+        ("derivado_internacional", "Derivados Internacional",  "#1b5e20"),
+        ("no_interesado",          "No interesados",           "#b71c1c"),
     ]
-
     status_rows = ""
-    for key, label, color, _ in estatuses:
+    for key, label, color in estatuses:
         count = por_estatus.get(key, 0)
         p = pct(count)
         status_rows += (
@@ -263,17 +288,63 @@ def _render_dashboard(stats: dict) -> str:
             f"</div>"
         )
 
+    # ── Top destinos ──────────────────────────────────────────────────────────
     destino_rows = ""
     for i, (destino, count) in enumerate(stats["top_destinos"], 1):
-        destino_rows += (
-            f"<tr>"
-            f'<td style="color:#888;font-weight:600">{i}</td>'
-            f"<td>{destino or '—'}</td>"
-            f"<td>{count}</td>"
-            f"</tr>"
-        )
+        destino_rows += f"<tr><td style='color:#888;font-weight:600'>{i}</td><td>{destino or '—'}</td><td>{count}</td></tr>"
     if not destino_rows:
         destino_rows = '<tr><td colspan="3" style="color:#aaa;text-align:center;padding:16px">Sin datos aún</td></tr>'
+
+    # ── Actividad 7 días ──────────────────────────────────────────────────────
+    max_dia = max((d["total"] for d in stats["leads_por_dia"]), default=1) or 1
+    dia_bars = ""
+    for d in stats["leads_por_dia"]:
+        h = max(4, int(d["total"] / max_dia * 60))
+        dia_bars += (
+            f'<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1">'
+            f'<span style="font-size:.7rem;color:#888">{d["total"]}</span>'
+            f'<div style="width:100%;height:{h}px;background:#25D366;border-radius:4px 4px 0 0;min-height:4px"></div>'
+            f'<span style="font-size:.68rem;color:#aaa">{d["dia"]}</span>'
+            f'</div>'
+        )
+    dia_table = ""
+    for d in reversed(stats["leads_por_dia"]):
+        if d["total"] > 0:
+            dia_table += f"<tr><td>{d['dia']}</td><td>{d['total']}</td><td style='color:#25D366'>{d['derivados']}</td></tr>"
+    if not dia_table:
+        dia_table = '<tr><td colspan="3" style="color:#aaa;text-align:center;padding:12px">Sin actividad esta semana</td></tr>'
+
+    # ── Chats activos ─────────────────────────────────────────────────────────
+    activas_rows = ""
+    for s in stats["detalle_activas"]:
+        estado_label = _ESTADO_BOT_LABEL.get(s["estado_bot"], s["estado_bot"])
+        activas_rows += (
+            f"<tr>"
+            f"<td style='color:#888'>{s['tel']}</td>"
+            f"<td>{s['nombre']}</td>"
+            f"<td style='max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>{s['destino']}</td>"
+            f"<td><span style='font-size:.72rem;color:#555'>{estado_label}</span></td>"
+            f"<td>{_badge(s['estatus'])}</td>"
+            f"<td style='color:#aaa;font-size:.78rem'>{s['ultima']}</td>"
+            f"</tr>"
+        )
+    if not activas_rows:
+        activas_rows = '<tr><td colspan="6" style="color:#aaa;text-align:center;padding:16px">Sin sesiones activas</td></tr>'
+
+    # ── Leads recientes ───────────────────────────────────────────────────────
+    recientes_rows = ""
+    for l in stats["leads_recientes"]:
+        recientes_rows += (
+            f"<tr>"
+            f"<td style='color:#888'>{l['tel']}</td>"
+            f"<td>{l['nombre']}</td>"
+            f"<td style='max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>{l['destino']}</td>"
+            f"<td>{_badge(l['estatus'])}</td>"
+            f"<td style='color:#aaa;font-size:.78rem'>{l['fecha']}</td>"
+            f"</tr>"
+        )
+    if not recientes_rows:
+        recientes_rows = '<tr><td colspan="5" style="color:#aaa;text-align:center;padding:16px">Sin datos aún</td></tr>'
 
     no_interesado = por_estatus.get("no_interesado", 0)
 
@@ -286,10 +357,11 @@ def _render_dashboard(stats: dict) -> str:
 <style>
 *{{box-sizing:border-box;margin:0;padding:0}}
 body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;color:#1a1a2e}}
-.header{{background:linear-gradient(135deg,#25D366,#128C7E);color:white;padding:24px 32px}}
+.header{{background:linear-gradient(135deg,#25D366,#128C7E);color:white;padding:24px 32px;display:flex;justify-content:space-between;align-items:center}}
 .header h1{{font-size:1.4rem;font-weight:700}}
 .header p{{font-size:0.82rem;opacity:0.85;margin-top:4px}}
-.container{{max-width:860px;margin:28px auto;padding:0 16px}}
+.reload{{background:rgba(255,255,255,.2);color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:.82rem}}
+.container{{max-width:920px;margin:28px auto;padding:0 16px}}
 .cards{{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:20px}}
 .card{{background:white;border-radius:12px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.08)}}
 .clabel{{font-size:.72rem;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}}
@@ -305,18 +377,23 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
 .count-est{{font-size:.82rem;font-weight:700;width:110px;text-align:right;flex-shrink:0}}
 table{{width:100%;border-collapse:collapse}}
 th{{text-align:left;font-size:.72rem;color:#888;text-transform:uppercase;letter-spacing:.5px;padding:8px 0;border-bottom:2px solid #f0f2f5}}
-td{{padding:10px 0;border-bottom:1px solid #f8f8f8;font-size:.88rem}}
+td{{padding:9px 0;border-bottom:1px solid #f8f8f8;font-size:.85rem;vertical-align:middle}}
 td:last-child,th:last-child{{text-align:right}}
+.two-col{{display:grid;grid-template-columns:1fr 1fr;gap:20px}}
 .footer{{text-align:center;font-size:.72rem;color:#bbb;padding:16px 0 32px}}
-@media(max-width:500px){{.label-est{{width:120px}}.count-est{{width:80px}}}}
+@media(max-width:600px){{.label-est{{width:120px}}.count-est{{width:80px}}.two-col{{grid-template-columns:1fr}}}}
 </style>
 </head>
 <body>
 <div class="header">
-  <h1>📊 Panel de Seguimiento</h1>
-  <p>LibertYa &amp; Puebla Travel Trips &nbsp;·&nbsp; Actualizado el {stats['fecha_actualizacion']}</p>
+  <div>
+    <h1>📊 Panel de Seguimiento</h1>
+    <p>LibertYa &amp; Puebla Travel Trips &nbsp;·&nbsp; {stats['fecha_actualizacion']}</p>
+  </div>
+  <button class="reload" onclick="location.reload()">↻ Actualizar</button>
 </div>
 <div class="container">
+
   <div class="cards">
     <div class="card">
       <div class="clabel">Total contactos</div>
@@ -329,7 +406,7 @@ td:last-child,th:last-child{{text-align:right}}
       <div class="csub" style="color:#25D366">{stats['tasa_conversion']}% de conversión</div>
     </div>
     <div class="card">
-      <div class="clabel">Sesiones activas</div>
+      <div class="clabel">Chats activos</div>
       <div class="cvalue" style="color:#1565c0">{stats['sesiones_activas']}</div>
       <div class="csub" style="color:#888">en este momento</div>
     </div>
@@ -341,17 +418,48 @@ td:last-child,th:last-child{{text-align:right}}
   </div>
 
   <div class="section">
-    <h2>Distribución por estatus</h2>
-    {status_rows}
+    <h2>📅 Actividad — Últimos 7 días</h2>
+    <div style="display:flex;align-items:flex-end;gap:6px;height:80px;margin-bottom:16px">{dia_bars}</div>
+    <table>
+      <thead><tr><th>Fecha</th><th>Nuevos chats</th><th>Derivados</th></tr></thead>
+      <tbody>{dia_table}</tbody>
+    </table>
+  </div>
+
+  <div class="two-col">
+    <div class="section">
+      <h2>Distribución por estatus</h2>
+      {status_rows}
+    </div>
+    <div class="section">
+      <h2>🏆 Top destinos</h2>
+      <table>
+        <thead><tr><th>#</th><th>Destino</th><th>Total</th></tr></thead>
+        <tbody>{destino_rows}</tbody>
+      </table>
+    </div>
   </div>
 
   <div class="section">
-    <h2>🏆 Top destinos de interés</h2>
+    <h2>🟢 Chats activos ahora</h2>
+    <div style="overflow-x:auto">
     <table>
-      <thead><tr><th>#</th><th>Destino</th><th>Interesados</th></tr></thead>
-      <tbody>{destino_rows}</tbody>
+      <thead><tr><th>Teléfono</th><th>Nombre</th><th>Destino</th><th>Estado bot</th><th>Estatus</th><th>Última act.</th></tr></thead>
+      <tbody>{activas_rows}</tbody>
     </table>
+    </div>
   </div>
+
+  <div class="section">
+    <h2>🕐 Leads recientes</h2>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>Teléfono</th><th>Nombre</th><th>Destino</th><th>Estatus</th><th>Fecha</th></tr></thead>
+      <tbody>{recientes_rows}</tbody>
+    </table>
+    </div>
+  </div>
+
 </div>
 <div class="footer">Datos en tiempo real · PueblTrips Bot</div>
 </body>
