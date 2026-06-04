@@ -693,6 +693,8 @@ def manejar_boton(db: Session, telefono: str, boton_id: str, canal: str = "whats
         enviar_texto(canal, telefono, _mensaje_derivar(estado, viajes_interes, duda))
         sesion.derivado_at = datetime.now(tz=_TZ_MX)
         sesion.seguimiento_derivado = None
+        sesion.asesor_activo = True
+        sesion.asesor_desde = datetime.now(tz=_TZ_MX)
         db.commit()
 
     elif boton_id == "btn_atendido":
@@ -714,6 +716,28 @@ def manejar_boton(db: Session, telefono: str, boton_id: str, canal: str = "whats
     elif boton_id == "btn_seguir":
         guardar_historial(db, sesion, set_estado(mensajes_openai(list(sesion.historial or [])), "menu"))
         enviar_texto(canal, telefono, _MENU_OPCIONES)
+
+
+def registrar_echo_asesor(db: Session, telefono: str) -> None:
+    """Marca que el asesor respondió manualmente (echo de Messenger). Renueva el timer de 24h."""
+    sesion = db.query(SesionIA).filter(SesionIA.telefono_cliente == telefono).first()
+    if sesion:
+        sesion.asesor_activo = True
+        sesion.asesor_desde = datetime.now(tz=_TZ_MX)
+        db.commit()
+        logger.info("Asesor tomó control de sesión: %s", telefono)
+
+
+def _reactivar_bot(db: Session, sesion: SesionIA, canal: str) -> None:
+    """Reactiva el bot y avisa al cliente."""
+    sesion.asesor_activo = False
+    sesion.asesor_desde = None
+    db.commit()
+    enviar_texto(
+        canal, sesion.telefono_cliente,
+        "¡Hola! 👋 Pasaron 24 horas desde que te conectamos con el asesor. "
+        "Si aún tienes dudas o quieres retomar la conversación, aquí estoy. 😊",
+    )
 
 
 def procesar_seguimientos(db: Session) -> None:
@@ -798,6 +822,23 @@ def procesar_seguimientos(db: Session) -> None:
         except Exception as exc:
             logger.error("Error seguimiento derivación a %s: %s", sesion.telefono_cliente, exc)
 
+    # ── 5. Reactivar bot: 24h sin actividad del asesor (Opción A) ────────────
+    sesiones_reactivar = (
+        db.query(SesionIA)
+        .filter(
+            SesionIA.sesion_cerrada == False,  # noqa: E712
+            SesionIA.asesor_activo == True,  # noqa: E712
+            SesionIA.asesor_desde.isnot(None),
+            SesionIA.asesor_desde < ahora - timedelta(hours=24),
+        )
+        .all()
+    )
+    for sesion in sesiones_reactivar:
+        try:
+            _reactivar_bot(db, sesion, getattr(sesion, "canal", "whatsapp"))
+        except Exception as exc:
+            logger.error("Error reactivando bot a %s: %s", sesion.telefono_cliente, exc)
+
 
 # ─── Estadísticas para el dashboard ──────────────────────────────────────────
 
@@ -834,6 +875,14 @@ def get_estadisticas(db: Session) -> dict:
         .filter(SesionIA.sesion_cerrada == False)  # noqa: E712
         .scalar()
     ) or 0
+
+    # ── Breakdown por canal ───────────────────────────────────────────────────
+    canal_raw = (
+        db.query(SesionIA.canal, func.count(SesionIA.id))
+        .group_by(SesionIA.canal)
+        .all()
+    )
+    por_canal = {c: n for c, n in canal_raw}
 
     # ── Actividad últimos 7 días ──────────────────────────────────────────────
     hace_7 = ahora_dt - timedelta(days=6)
@@ -883,6 +932,7 @@ def get_estadisticas(db: Session) -> dict:
             "destino": (l.destino_interes or "—") if l else "—",
             "estatus": l.estatus if l else "nuevo",
             "estado_bot": get_estado(list(s.historial or [])),
+            "canal": getattr(s, "canal", "whatsapp"),
             "ultima": ultima,
         })
 
@@ -905,6 +955,7 @@ def get_estadisticas(db: Session) -> dict:
         "tasa_conversion": tasa,
         "top_destinos": list(top_destinos),
         "sesiones_activas": sesiones_activas,
+        "por_canal": por_canal,
         "leads_por_dia": leads_por_dia,
         "detalle_activas": detalle_activas,
         "leads_recientes": leads_recientes,

@@ -60,6 +60,8 @@ CREATE TRIGGER trg_sesiones_updated_at
 -- ============================================================
 -- MIGRACIÓN: soporte multicanal (ejecutar en Supabase SQL Editor)
 -- ALTER TABLE sesiones_ia ADD COLUMN canal VARCHAR(20) NOT NULL DEFAULT 'whatsapp';
+-- ALTER TABLE sesiones_ia ADD COLUMN asesor_activo BOOLEAN NOT NULL DEFAULT FALSE;
+-- ALTER TABLE sesiones_ia ADD COLUMN asesor_desde TIMESTAMPTZ;
 -- ============================================================
 
 -- ============================================================

@@ -19,6 +19,8 @@ class SesionIA(Base):
     derivado_at          = Column(DateTime(timezone=True), nullable=True)
     seguimiento_derivado = Column(DateTime(timezone=True), nullable=True)
     sesion_cerrada       = Column(Boolean, nullable=False, server_default=text("false"))
+    asesor_activo        = Column(Boolean, nullable=False, server_default=text("false"))
+    asesor_desde         = Column(DateTime(timezone=True), nullable=True)
     created_at       = Column(DateTime(timezone=True), nullable=False, server_default=text("NOW()"))
     updated_at       = Column(DateTime(timezone=True), nullable=False, server_default=text("NOW()"))
 

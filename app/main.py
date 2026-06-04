@@ -8,6 +8,7 @@ Endpoints:
 """
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
@@ -40,9 +41,12 @@ from .services import (
     obtener_o_crear_sesion,
     preparar_historial,
     procesar_seguimientos,
+    registrar_echo_asesor,
+    _reactivar_bot,
     set_estado,
     get_ultima_duda,
 )
+from .models import SesionIA as _SesionIA
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -118,12 +122,31 @@ def _procesar_payload_messenger(raw: dict, db: Session) -> None:
             psid = evento.get("sender", {}).get("id")
             if not psid:
                 continue
-            # Quick reply (clic en botón de Messenger)
             msg = evento.get("message", {})
+
+            # Echo: mensaje enviado por el asesor desde la página
+            if msg.get("is_echo"):
+                recipient_psid = evento.get("recipient", {}).get("id")
+                if recipient_psid:
+                    texto_echo = msg.get("text", "").strip().lower()
+                    if texto_echo == "/bot":
+                        # Asesor cede control de vuelta al bot
+                        sesion = db.query(_SesionIA).filter(
+                            _SesionIA.telefono_cliente == recipient_psid
+                        ).first()
+                        if sesion:
+                            _reactivar_bot(db, sesion, "messenger")
+                    else:
+                        # Cualquier otro mensaje del asesor → bot se calla
+                        registrar_echo_asesor(db, telefono=recipient_psid)
+                continue
+
+            # Quick reply (clic en botón de Messenger)
             quick_reply = msg.get("quick_reply")
             if quick_reply:
                 manejar_boton(db, telefono=psid, boton_id=quick_reply.get("payload", ""), canal="messenger")
                 continue
+
             # Mensaje de texto normal
             texto = msg.get("text")
             if texto:
@@ -145,6 +168,25 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str, canal: str = "what
         sesion.seguimiento_3d = None
         sesion.historial = []
         db.commit()
+
+    # ── Human handoff: solo aplica en Messenger ──────────────────────────────
+    if canal == "messenger" and sesion.asesor_activo and sesion.asesor_desde:
+        from .services import _TZ_MX
+        ahora = datetime.now(tz=_TZ_MX)
+        asesor_desde = sesion.asesor_desde
+        if asesor_desde.tzinfo is None:
+            asesor_desde = asesor_desde.replace(tzinfo=_TZ_MX)
+        if (ahora - asesor_desde) < timedelta(hours=24):
+            # Asesor activo y dentro de las 24h → bot se calla (Opción C activa)
+            logger.info("[%s] Bot silenciado — asesor activo en sesión %s", canal, telefono)
+            return
+        else:
+            # Pasaron 24h sin actividad del asesor → bot se reactiva (Opción C)
+            sesion.asesor_activo = False
+            sesion.asesor_desde = None
+            db.commit()
+            logger.info("[%s] Bot reactivado (24h sin asesor) para %s", canal, telefono)
+
     historial = list(sesion.historial or [])
     estado = get_estado(historial)
 
@@ -340,6 +382,7 @@ def _render_dashboard(stats: dict) -> str:
     activas_rows = ""
     for s in stats["detalle_activas"]:
         estado_label = _ESTADO_BOT_LABEL.get(s["estado_bot"], s["estado_bot"])
+        canal_icon = "💬" if s.get("canal") == "messenger" else "📱"
         activas_rows += (
             f"<tr>"
             f"<td style='color:#888'>{s['tel']}</td>"
@@ -347,11 +390,12 @@ def _render_dashboard(stats: dict) -> str:
             f"<td style='max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>{s['destino']}</td>"
             f"<td><span style='font-size:.72rem;color:#555'>{estado_label}</span></td>"
             f"<td>{_badge(s['estatus'])}</td>"
+            f"<td style='text-align:center'>{canal_icon}</td>"
             f"<td style='color:#aaa;font-size:.78rem'>{s['ultima']}</td>"
             f"</tr>"
         )
     if not activas_rows:
-        activas_rows = '<tr><td colspan="6" style="color:#aaa;text-align:center;padding:16px">Sin sesiones activas</td></tr>'
+        activas_rows = '<tr><td colspan="7" style="color:#aaa;text-align:center;padding:16px">Sin sesiones activas</td></tr>'
 
     # ── Leads recientes ───────────────────────────────────────────────────────
     recientes_rows = ""
@@ -437,6 +481,21 @@ td:last-child,th:last-child{{text-align:right}}
       <div class="cvalue" style="color:#b71c1c">{no_interesado}</div>
       <div class="csub" style="color:#888">{pct(no_interesado)}% del total</div>
     </div>
+    <div class="card">
+      <div class="clabel">Canales</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+        <span style="font-size:1.3rem">📱</span>
+        <div>
+          <div style="font-size:1.2rem;font-weight:700;color:#25D366">{stats['por_canal'].get('whatsapp', 0)}</div>
+          <div style="font-size:.7rem;color:#888">WhatsApp</div>
+        </div>
+        <span style="font-size:1.3rem;margin-left:8px">💬</span>
+        <div>
+          <div style="font-size:1.2rem;font-weight:700;color:#0084ff">{stats['por_canal'].get('messenger', 0)}</div>
+          <div style="font-size:.7rem;color:#888">Messenger</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="section">
@@ -466,7 +525,7 @@ td:last-child,th:last-child{{text-align:right}}
     <h2>🟢 Chats activos ahora</h2>
     <div style="overflow-x:auto">
     <table>
-      <thead><tr><th>Teléfono</th><th>Nombre</th><th>Destino</th><th>Estado bot</th><th>Estatus</th><th>Última act.</th></tr></thead>
+      <thead><tr><th>Teléfono</th><th>Nombre</th><th>Destino</th><th>Estado bot</th><th>Estatus</th><th style="text-align:center">Canal</th><th>Última act.</th></tr></thead>
       <tbody>{activas_rows}</tbody>
     </table>
     </div>
