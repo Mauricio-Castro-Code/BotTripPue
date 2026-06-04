@@ -798,5 +798,43 @@
   ],
   "notas": "Cover en Playa Vikingos reembolsable en comidas y bebidas.",
   "reserva_con": "Depósito, transferencia o efectivo"
+},
+{
+  "tipo": "nacional",
+  "destino": "Hongos San José del Pacífico",
+  "estado": "Oaxaca",
+  "fechas": ["15 y 16 de agosto"],
+  "salidas": "Walmart Ánimas y Parque Juárez",
+  "no_dias": "2 días / 1 noche",
+  "precio": "$2,100",
+  "transporte": "Transportación turística",
+  "horario_salida": "10:00 pm",
+  "horario_regreso": "05:00 am",
+  "incluye": [
+    "🏨 Hospedaje",
+    "🧑‍💼 Coordinador de viaje",
+    "🚍 Transportación turística",
+    "🚑 Seguro de viajero en transportación"
+  ],
+  "notas": "Cupo limitado.",
+  "reserva_con": null
+},
+{
+  "tipo": "nacional",
+  "destino": "Fan Fest FIFA",
+  "estado": "Ciudad de México",
+  "fechas": ["Fechas juegos México y Colombia"],
+  "salidas": "Walmart Ánimas y Parque Juárez",
+  "precio": "$690",
+  "transporte": "Transportación turística",
+  "horario_salida": "10:00 pm",
+  "horario_regreso": "05:00 am",
+  "incluye": [
+    "🧑‍💼 Coordinador de viaje",
+    "🚍 Transportación turística",
+    "🚑 Seguro de viajero en transportación"
+  ],
+  "notas": "Cupo limitado.",
+  "reserva_con": null
 }
 ]
