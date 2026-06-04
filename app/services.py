@@ -306,10 +306,10 @@ def mensajes_openai(historial: list) -> list:
 
 # ─── Sesión ───────────────────────────────────────────────────────────────────
 
-def obtener_o_crear_sesion(db: Session, telefono: str) -> SesionIA:
+def obtener_o_crear_sesion(db: Session, telefono: str, canal: str = "whatsapp") -> SesionIA:
     sesion = db.query(SesionIA).filter(SesionIA.telefono_cliente == telefono).first()
     if not sesion:
-        sesion = SesionIA(telefono_cliente=telefono, historial=[])
+        sesion = SesionIA(telefono_cliente=telefono, historial=[], canal=canal)
         db.add(sesion)
         db.commit()
         db.refresh(sesion)
@@ -481,6 +481,65 @@ def enviar_mensaje_texto(telefono: str, mensaje: str) -> None:
     })
 
 
+# ─── Messenger ────────────────────────────────────────────────────────────────
+
+def _post_messenger(payload: dict) -> None:
+    url = f"{META_API_BASE}/me/messages"
+    headers = {
+        "Authorization": f"Bearer {settings.MESSENGER_PAGE_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    psid = payload.get("recipient", {}).get("id", "?")
+    try:
+        r = requests.post(url, headers=headers, json=payload, timeout=10)
+        if not r.ok:
+            logger.error("Messenger error a %s: %s — %s", psid, r.status_code, r.text)
+    except Exception as exc:
+        logger.error("Messenger error a %s: %s", psid, exc)
+
+
+def enviar_texto_messenger(psid: str, mensaje: str) -> None:
+    _post_messenger({"recipient": {"id": psid}, "message": {"text": mensaje}})
+
+
+def enviar_botones_messenger(psid: str, estado: str = "") -> None:
+    if estado in {"chat_cliente", "chat_cliente_nacional", "chat_cliente_internacional"}:
+        titulo_accion = "Hablar con asesor"
+        cuerpo = "¿Necesitas hablar directamente con un asesor? 😊"
+    else:
+        titulo_accion = "Apartar mi lugar"
+        cuerpo = "¿Listo para asegurar tu lugar? Los cupos son limitados 🙌"
+
+    _post_messenger({
+        "recipient": {"id": psid},
+        "message": {
+            "text": cuerpo,
+            "quick_replies": [
+                {"content_type": "text", "title": titulo_accion,      "payload": "btn_reservar"},
+                {"content_type": "text", "title": "Ya no me interesa","payload": "btn_terminar"},
+            ],
+        },
+    })
+
+
+# ─── Dispatcher multicanal ────────────────────────────────────────────────────
+
+def enviar_texto(canal: str, sender: str, mensaje: str) -> None:
+    if canal == "messenger":
+        enviar_texto_messenger(sender, mensaje)
+    else:
+        enviar_mensaje_texto(sender, mensaje)
+
+
+def enviar_botones(canal: str, sender: str, estado: str = "") -> None:
+    if canal == "messenger":
+        enviar_botones_messenger(sender, estado)
+    else:
+        enviar_botones_reserva(sender, estado)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 _ESTADOS_CLIENTE = {"chat_cliente", "chat_cliente_nacional", "chat_cliente_internacional"}
 
 
@@ -511,30 +570,42 @@ def enviar_botones_reserva(telefono: str, estado: str = "") -> None:
 
 # ─── Follow-up automático ─────────────────────────────────────────────────────
 
-def _enviar_seguimiento_8h(telefono: str) -> None:
+def _enviar_seguimiento_8h(telefono: str, canal: str = "whatsapp") -> None:
     """Primer aviso a las 8h de inactividad — invita a reservar o a resolver dudas."""
-    _post_whatsapp({
-        "messaging_product": "whatsapp",
-        "to": telefono,
-        "type": "interactive",
-        "interactive": {
-            "type": "button",
-            "body": {
-                "text": (
-                    "¡Hola! 👋 Vimos que estuviste explorando nuestros destinos de viaje.\n\n"
-                    "¿Pudiste encontrar lo que buscabas? Si tienes alguna duda o ya estás listo "
-                    "para apartar tu lugar, aquí estamos. ✈️"
-                )
+    texto_cuerpo = (
+        "¡Hola! 👋 Vimos que estuviste explorando nuestros destinos de viaje.\n\n"
+        "¿Pudiste encontrar lo que buscabas? Si tienes alguna duda o ya estás listo "
+        "para apartar tu lugar, aquí estamos. ✈️"
+    )
+    if canal == "messenger":
+        _post_messenger({
+            "recipient": {"id": telefono},
+            "message": {
+                "text": texto_cuerpo,
+                "quick_replies": [
+                    {"content_type": "text", "title": "Quiero reservar",  "payload": "btn_reservar"},
+                    {"content_type": "text", "title": "Tengo una duda",   "payload": "btn_seguir"},
+                    {"content_type": "text", "title": "No me interesa",   "payload": "btn_no_interes"},
+                ],
             },
-            "action": {
-                "buttons": [
-                    {"type": "reply", "reply": {"id": "btn_reservar",   "title": "Quiero reservar"}},
-                    {"type": "reply", "reply": {"id": "btn_seguir",     "title": "Tengo una duda"}},
-                    {"type": "reply", "reply": {"id": "btn_no_interes", "title": "No me interesa"}},
-                ]
+        })
+    else:
+        _post_whatsapp({
+            "messaging_product": "whatsapp",
+            "to": telefono,
+            "type": "interactive",
+            "interactive": {
+                "type": "button",
+                "body": {"text": texto_cuerpo},
+                "action": {
+                    "buttons": [
+                        {"type": "reply", "reply": {"id": "btn_reservar",   "title": "Quiero reservar"}},
+                        {"type": "reply", "reply": {"id": "btn_seguir",     "title": "Tengo una duda"}},
+                        {"type": "reply", "reply": {"id": "btn_no_interes", "title": "No me interesa"}},
+                    ]
+                },
             },
-        },
-    })
+        })
 
 
 def _enviar_seguimiento_derivacion(telefono: str) -> None:
@@ -561,38 +632,49 @@ def _enviar_seguimiento_derivacion(telefono: str) -> None:
     })
 
 
-def _enviar_recordatorio_cierre(telefono: str, estado: str) -> None:
+def _enviar_recordatorio_cierre(telefono: str, estado: str, canal: str = "whatsapp") -> None:
     """Segundo aviso a las 24h — advierte que el chat se cerrará en 2h."""
     nombre = "Puebla Travel Trips" if estado == "chat_nacional" else "LibertYa"
-    _post_whatsapp({
-        "messaging_product": "whatsapp",
-        "to": telefono,
-        "type": "interactive",
-        "interactive": {
-            "type": "button",
-            "body": {
-                "text": (
-                    f"¡Hola de nuevo! 😊 Desde *{nombre}* queremos recordarte "
-                    "que seguimos aquí para ayudarte a planear tu próximo viaje. ✈️\n\n"
-                    "Nuestros asesores están listos para reservar tu lugar y acompañarte "
-                    "en cada paso, ya sea un destino nacional o internacional. 🌎\n\n"
-                    "⚠️ Si no recibimos respuesta en las próximas *2 horas*, "
-                    "cerraremos esta conversación automáticamente.\n"
-                    "¡Pero siempre estaremos aquí para cuando quieras viajar!"
-                )
+    texto_cuerpo = (
+        f"¡Hola de nuevo! 😊 Desde {nombre} queremos recordarte "
+        "que seguimos aquí para ayudarte a planear tu próximo viaje. ✈️\n\n"
+        "Nuestros asesores están listos para reservar tu lugar y acompañarte "
+        "en cada paso, ya sea un destino nacional o internacional. 🌎\n\n"
+        "⚠️ Si no recibimos respuesta en las próximas 2 horas, "
+        "cerraremos esta conversación automáticamente.\n"
+        "¡Pero siempre estaremos aquí para cuando quieras viajar!"
+    )
+    if canal == "messenger":
+        _post_messenger({
+            "recipient": {"id": telefono},
+            "message": {
+                "text": texto_cuerpo,
+                "quick_replies": [
+                    {"content_type": "text", "title": "Quiero reservar",  "payload": "btn_reservar"},
+                    {"content_type": "text", "title": "No me interesa",   "payload": "btn_no_interes"},
+                ],
             },
-            "action": {
-                "buttons": [
-                    {"type": "reply", "reply": {"id": "btn_reservar",   "title": "Quiero reservar"}},
-                    {"type": "reply", "reply": {"id": "btn_no_interes", "title": "No me interesa"}},
-                ]
+        })
+    else:
+        _post_whatsapp({
+            "messaging_product": "whatsapp",
+            "to": telefono,
+            "type": "interactive",
+            "interactive": {
+                "type": "button",
+                "body": {"text": texto_cuerpo},
+                "action": {
+                    "buttons": [
+                        {"type": "reply", "reply": {"id": "btn_reservar",   "title": "Quiero reservar"}},
+                        {"type": "reply", "reply": {"id": "btn_no_interes", "title": "No me interesa"}},
+                    ]
+                },
             },
-        },
-    })
+        })
 
 
-def manejar_boton(db: Session, telefono: str, boton_id: str) -> None:
-    sesion = obtener_o_crear_sesion(db, telefono)
+def manejar_boton(db: Session, telefono: str, boton_id: str, canal: str = "whatsapp") -> None:
+    sesion = obtener_o_crear_sesion(db, telefono, canal)
     estado = get_estado(list(sesion.historial or []))
 
     if boton_id in ("btn_no_interes", "btn_terminar"):
@@ -600,7 +682,7 @@ def manejar_boton(db: Session, telefono: str, boton_id: str) -> None:
         sesion.sesion_cerrada = True
         db.commit()
         guardar_o_actualizar_lead(db, telefono, estatus="no_interesado")
-        enviar_mensaje_texto(telefono, _MENSAJE_DESPEDIDA)
+        enviar_texto(canal, telefono, _MENSAJE_DESPEDIDA)
 
     elif boton_id in ("btn_asesor", "btn_reservar"):
         historial = list(sesion.historial or [])
@@ -608,7 +690,7 @@ def manejar_boton(db: Session, telefono: str, boton_id: str) -> None:
         estatus_derivado = "derivado_nacional" if estado in _ESTADOS_NACIONALES else "derivado_internacional"
         guardar_o_actualizar_lead(db, telefono, estatus=estatus_derivado)
         duda = get_ultima_duda(historial) if estado in ("chat_cliente_nacional", "chat_cliente_internacional") else None
-        enviar_mensaje_texto(telefono, _mensaje_derivar(estado, viajes_interes, duda))
+        enviar_texto(canal, telefono, _mensaje_derivar(estado, viajes_interes, duda))
         sesion.derivado_at = datetime.now(tz=_TZ_MX)
         sesion.seguimiento_derivado = None
         db.commit()
@@ -617,8 +699,8 @@ def manejar_boton(db: Session, telefono: str, boton_id: str) -> None:
         guardar_historial(db, sesion, set_estado([], "cerrada"))
         sesion.sesion_cerrada = True
         db.commit()
-        enviar_mensaje_texto(
-            telefono,
+        enviar_texto(
+            canal, telefono,
             "¡Nos alegra mucho saberlo! 😊✈️\n\n"
             "Que disfrutes mucho tu viaje. ¡Hasta pronto y buen viaje! 🌍",
         )
@@ -627,11 +709,11 @@ def manejar_boton(db: Session, telefono: str, boton_id: str) -> None:
         historial = list(sesion.historial or [])
         viajes_interes = get_viajes_interes(historial)
         duda = get_ultima_duda(historial) if estado in ("chat_cliente_nacional", "chat_cliente_internacional") else None
-        enviar_mensaje_texto(telefono, _mensaje_derivar(estado, viajes_interes, duda))
+        enviar_texto(canal, telefono, _mensaje_derivar(estado, viajes_interes, duda))
 
     elif boton_id == "btn_seguir":
         guardar_historial(db, sesion, set_estado(mensajes_openai(list(sesion.historial or [])), "menu"))
-        enviar_mensaje_texto(telefono, _MENU_OPCIONES)
+        enviar_texto(canal, telefono, _MENU_OPCIONES)
 
 
 def procesar_seguimientos(db: Session) -> None:
@@ -652,7 +734,7 @@ def procesar_seguimientos(db: Session) -> None:
     )
     for sesion in sesiones_8h:
         try:
-            _enviar_seguimiento_8h(sesion.telefono_cliente)
+            _enviar_seguimiento_8h(sesion.telefono_cliente, sesion.canal)
             sesion.seguimiento_1h = ahora
             db.commit()
         except Exception as exc:
@@ -672,7 +754,7 @@ def procesar_seguimientos(db: Session) -> None:
     for sesion in sesiones_24h:
         try:
             estado_sesion = get_estado(list(sesion.historial or []))
-            _enviar_recordatorio_cierre(sesion.telefono_cliente, estado_sesion)
+            _enviar_recordatorio_cierre(sesion.telefono_cliente, estado_sesion, sesion.canal)
             sesion.seguimiento_3d = ahora
             db.commit()
         except Exception as exc:

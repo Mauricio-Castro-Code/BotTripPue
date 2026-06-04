@@ -58,6 +58,11 @@ CREATE TRIGGER trg_sesiones_updated_at
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ============================================================
+-- MIGRACIÓN: soporte multicanal (ejecutar en Supabase SQL Editor)
+-- ALTER TABLE sesiones_ia ADD COLUMN canal VARCHAR(20) NOT NULL DEFAULT 'whatsapp';
+-- ============================================================
+
+-- ============================================================
 -- VISTA: destinos más populares
 -- SELECT * FROM destinos_populares;
 -- ============================================================

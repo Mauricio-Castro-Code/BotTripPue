@@ -11,6 +11,7 @@ class SesionIA(Base):
 
     id               = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     telefono_cliente = Column(String(20), nullable=False, unique=True)
+    canal            = Column(String(20), nullable=False, server_default=text("'whatsapp'"))
     historial        = Column(JSONB, nullable=False, default=list)
     ultimo_mensaje   = Column(DateTime(timezone=True), nullable=False, server_default=text("NOW()"))
     seguimiento_1h       = Column(DateTime(timezone=True), nullable=True)

@@ -26,8 +26,8 @@ from .services import (
     _ESTADOS_CON_IA,
     _OPCION_POR_INTENCION,
     clasificar_intencion,
-    enviar_botones_reserva,
-    enviar_mensaje_texto,
+    enviar_botones,
+    enviar_texto,
     generar_respuesta_ia,
     get_estadisticas,
     get_estado,
@@ -84,14 +84,18 @@ def verificar_webhook(
 async def recibir_mensaje(request: Request, db: Session = Depends(get_db)):
     try:
         raw = await request.json()
-        payload = WhatsAppWebhookPayload.model_validate(raw)
-        _procesar_payload(payload, db)
+        objeto = raw.get("object", "")
+        if objeto == "page":
+            _procesar_payload_messenger(raw, db)
+        else:
+            payload = WhatsAppWebhookPayload.model_validate(raw)
+            _procesar_payload_whatsapp(payload, db)
     except Exception as exc:
         logger.exception("Error procesando webhook: %s", exc)
     return {"status": "ok"}
 
 
-def _procesar_payload(payload: WhatsAppWebhookPayload, db: Session) -> None:
+def _procesar_payload_whatsapp(payload: WhatsAppWebhookPayload, db: Session) -> None:
     if not payload.entry:
         return
     for entrada in payload.entry:
@@ -101,22 +105,40 @@ def _procesar_payload(payload: WhatsAppWebhookPayload, db: Session) -> None:
                 continue
             for mensaje in valor.messages:
                 if mensaje.type == "text" and mensaje.text:
-                    _procesar_mensaje(db, telefono=mensaje.from_, texto=mensaje.text.body)
+                    _procesar_mensaje(db, telefono=mensaje.from_, texto=mensaje.text.body, canal="whatsapp")
                 elif mensaje.type == "interactive" and mensaje.interactive:
                     btn = mensaje.interactive.button_reply
                     if btn and btn.id and mensaje.from_:
-                        manejar_boton(db, telefono=mensaje.from_, boton_id=btn.id)
+                        manejar_boton(db, telefono=mensaje.from_, boton_id=btn.id, canal="whatsapp")
 
 
-def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
-    logger.info("Mensaje de %s: %s", telefono, texto[:80])
+def _procesar_payload_messenger(raw: dict, db: Session) -> None:
+    for entrada in raw.get("entry", []):
+        for evento in entrada.get("messaging", []):
+            psid = evento.get("sender", {}).get("id")
+            if not psid:
+                continue
+            # Quick reply (clic en botón de Messenger)
+            msg = evento.get("message", {})
+            quick_reply = msg.get("quick_reply")
+            if quick_reply:
+                manejar_boton(db, telefono=psid, boton_id=quick_reply.get("payload", ""), canal="messenger")
+                continue
+            # Mensaje de texto normal
+            texto = msg.get("text")
+            if texto:
+                _procesar_mensaje(db, telefono=psid, texto=texto, canal="messenger")
+
+
+def _procesar_mensaje(db: Session, telefono: str, texto: str, canal: str = "whatsapp") -> None:
+    logger.info("[%s] Mensaje de %s: %s", canal, telefono, texto[:80])
 
     if telefono in settings.blocked_phones_set:
         return
 
     guardar_o_actualizar_lead(db, telefono)
 
-    sesion = obtener_o_crear_sesion(db, telefono)
+    sesion = obtener_o_crear_sesion(db, telefono, canal)
     if sesion.sesion_cerrada:
         sesion.sesion_cerrada = False
         sesion.seguimiento_1h = None
@@ -127,24 +149,24 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
     estado = get_estado(historial)
 
     intencion = clasificar_intencion(texto, estado)
-    logger.info("Intención de %s (estado=%s): %s", telefono, estado, intencion)
+    logger.info("[%s] Intención de %s (estado=%s): %s", canal, telefono, estado, intencion)
 
     if intencion == "no_interesado":
         guardar_historial(db, sesion, set_estado([], "cerrada"))
         sesion.sesion_cerrada = True
         db.commit()
         guardar_o_actualizar_lead(db, telefono, estatus="no_interesado")
-        enviar_mensaje_texto(telefono, _MENSAJE_DESPEDIDA)
+        enviar_texto(canal, telefono, _MENSAJE_DESPEDIDA)
         return
 
     if intencion == "despedida":
         guardar_historial(db, sesion, set_estado([], "menu"))
-        enviar_mensaje_texto(telefono, _MENSAJE_DESPEDIDA)
+        enviar_texto(canal, telefono, _MENSAJE_DESPEDIDA)
         return
 
     if intencion == "saludo":
         guardar_historial(db, sesion, set_estado([], "menu"))
-        enviar_mensaje_texto(telefono, _MENSAJE_BIENVENIDA)
+        enviar_texto(canal, telefono, _MENSAJE_BIENVENIDA)
         return
 
     if intencion == "continuar" and estado in _ESTADOS_CON_IA:
@@ -160,8 +182,8 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
             nuevo_estado = estado
         guardar_historial(db, sesion, set_estado(msgs, nuevo_estado, viajes_actuales))
         guardar_o_actualizar_lead(db, telefono, nombre=nombre, destino=destino)
-        enviar_mensaje_texto(telefono, respuesta)
-        enviar_botones_reserva(telefono, nuevo_estado)
+        enviar_texto(canal, telefono, respuesta)
+        enviar_botones(canal, telefono, nuevo_estado)
         return
 
     if intencion in _ESTADO_POR_INTENCION:
@@ -171,7 +193,7 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
         msgs = mensajes_openai(historial) + [{"role": "assistant", "content": respuesta}]
         guardar_historial(db, sesion, set_estado(msgs, nuevo_estado))
         guardar_o_actualizar_lead(db, telefono, estatus="informado")
-        enviar_mensaje_texto(telefono, respuesta)
+        enviar_texto(canal, telefono, respuesta)
         return
 
     if intencion == "continuar" and estado == "menu":
@@ -186,13 +208,13 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str) -> None:
         viajes_actuales = [viaje_nuevo] if viaje_nuevo else []
         guardar_historial(db, sesion, set_estado(msgs, nuevo_estado, viajes_actuales or None))
         guardar_o_actualizar_lead(db, telefono, nombre=nombre, destino=destino, estatus="informado")
-        enviar_mensaje_texto(telefono, respuesta)
+        enviar_texto(canal, telefono, respuesta)
         if nuevo_estado in _ESTADOS_CON_IA:
-            enviar_botones_reserva(telefono, nuevo_estado)
+            enviar_botones(canal, telefono, nuevo_estado)
         return
 
-    enviar_mensaje_texto(
-        telefono,
+    enviar_texto(
+        canal, telefono,
         "¡Hmm, no entendí bien! 😊 ¿Sobre qué te puedo ayudar?\n\n" + _MENU_OPCIONES,
     )
 

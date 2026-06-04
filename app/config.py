@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     WHATSAPP_TOKEN: str
     WHATSAPP_VERIFY_TOKEN: str
     WHATSAPP_PHONE_NUMBER_ID: str
+    MESSENGER_PAGE_TOKEN: str = ""   # Page Access Token de la página de Facebook
     BLOCKED_PHONES: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
