@@ -124,21 +124,16 @@ def _procesar_payload_messenger(raw: dict, db: Session) -> None:
                 continue
             msg = evento.get("message", {})
 
-            # Echo: mensaje enviado por el asesor desde la página
+            # Echo: mensaje enviado desde la página
             if msg.get("is_echo"):
+                # Solo procesar el comando /bot para reactivar el bot manualmente
                 recipient_psid = evento.get("recipient", {}).get("id")
-                if recipient_psid:
-                    texto_echo = msg.get("text", "").strip().lower()
-                    if texto_echo == "/bot":
-                        # Asesor cede control de vuelta al bot
-                        sesion = db.query(_SesionIA).filter(
-                            _SesionIA.telefono_cliente == recipient_psid
-                        ).first()
-                        if sesion:
-                            _reactivar_bot(db, sesion, "messenger")
-                    else:
-                        # Cualquier otro mensaje del asesor → bot se calla
-                        registrar_echo_asesor(db, telefono=recipient_psid)
+                if recipient_psid and msg.get("text", "").strip().lower() == "/bot":
+                    sesion = db.query(_SesionIA).filter(
+                        _SesionIA.telefono_cliente == recipient_psid
+                    ).first()
+                    if sesion:
+                        _reactivar_bot(db, sesion, "messenger")
                 continue
 
             # Quick reply (clic en botón de Messenger)
