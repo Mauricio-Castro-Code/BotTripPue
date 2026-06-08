@@ -16,7 +16,9 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 from sqlalchemy.orm import Session
 
 from .config import settings
+from .crm_service import guardar_mensaje_entrante, guardar_mensaje_saliente
 from .database import SessionLocal, get_db
+from . import crm as _crm_module
 from .schemas import BroadcastRequest, WhatsAppWebhookPayload
 from .services import (
     broadcast_mensaje,
@@ -71,6 +73,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="LibertYa WhatsApp Bot", version="1.0.0", lifespan=lifespan)
+app.include_router(_crm_module.router)
 
 
 @app.get("/webhook", response_class=PlainTextResponse)
@@ -148,6 +151,11 @@ def _procesar_payload_messenger(raw: dict, db: Session) -> None:
                 _procesar_mensaje(db, telefono=psid, texto=texto, canal="messenger")
 
 
+def _enviar_y_guardar(db: Session, sesion: _SesionIA, canal: str, telefono: str, texto: str) -> None:
+    enviar_texto(canal, telefono, texto)
+    guardar_mensaje_saliente(db, sesion, texto, sender_type="bot")
+
+
 def _procesar_mensaje(db: Session, telefono: str, texto: str, canal: str = "whatsapp") -> None:
     logger.info("[%s] Mensaje de %s: %s", canal, telefono, texto[:80])
 
@@ -157,30 +165,41 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str, canal: str = "what
     guardar_o_actualizar_lead(db, telefono)
 
     sesion = obtener_o_crear_sesion(db, telefono, canal)
+
+    # Guardar mensaje entrante siempre (antes de cualquier lógica del bot)
+    guardar_mensaje_entrante(db, sesion, texto)
+
     if sesion.sesion_cerrada:
         sesion.sesion_cerrada = False
         sesion.seguimiento_1h = None
         sesion.seguimiento_3d = None
         sesion.historial = []
+        sesion.estado_comercial = "nuevo"
+        sesion.asesor_activo = False
+        sesion.asesor_desde = None
+        sesion.asesor_nombre = None
         db.commit()
 
-    # ── Human handoff: solo aplica en Messenger ──────────────────────────────
-    if canal == "messenger" and sesion.asesor_activo and sesion.asesor_desde:
-        from .services import _TZ_MX
-        ahora = datetime.now(tz=_TZ_MX)
-        asesor_desde = sesion.asesor_desde
-        if asesor_desde.tzinfo is None:
-            asesor_desde = asesor_desde.replace(tzinfo=_TZ_MX)
-        if (ahora - asesor_desde) < timedelta(hours=24):
-            # Asesor activo y dentro de las 24h → bot se calla (Opción C activa)
-            logger.info("[%s] Bot silenciado — asesor activo en sesión %s", canal, telefono)
-            return
+    # ── Human handoff ─────────────────────────────────────────────────────────
+    if sesion.asesor_activo:
+        if canal == "messenger" and sesion.asesor_desde:
+            from .services import _TZ_MX
+            ahora = datetime.now(tz=_TZ_MX)
+            asesor_desde = sesion.asesor_desde
+            if asesor_desde.tzinfo is None:
+                asesor_desde = asesor_desde.replace(tzinfo=_TZ_MX)
+            if (ahora - asesor_desde) < timedelta(hours=24):
+                logger.info("[%s] Bot silenciado — asesor activo en sesión %s", canal, telefono)
+                return
+            else:
+                sesion.asesor_activo = False
+                sesion.asesor_desde = None
+                db.commit()
+                logger.info("[%s] Bot reactivado (24h sin asesor) para %s", canal, telefono)
         else:
-            # Pasaron 24h sin actividad del asesor → bot se reactiva (Opción C)
-            sesion.asesor_activo = False
-            sesion.asesor_desde = None
-            db.commit()
-            logger.info("[%s] Bot reactivado (24h sin asesor) para %s", canal, telefono)
+            # WhatsApp CRM handoff — silenciado hasta reactivar manualmente desde el panel
+            logger.info("[%s] Bot silenciado (CRM) para %s", canal, telefono)
+            return
 
     historial = list(sesion.historial or [])
     estado = get_estado(historial)
@@ -193,17 +212,17 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str, canal: str = "what
         sesion.sesion_cerrada = True
         db.commit()
         guardar_o_actualizar_lead(db, telefono, estatus="no_interesado")
-        enviar_texto(canal, telefono, _MENSAJE_DESPEDIDA)
+        _enviar_y_guardar(db, sesion, canal, telefono, _MENSAJE_DESPEDIDA)
         return
 
     if intencion == "despedida":
         guardar_historial(db, sesion, set_estado([], "menu"))
-        enviar_texto(canal, telefono, _MENSAJE_DESPEDIDA)
+        _enviar_y_guardar(db, sesion, canal, telefono, _MENSAJE_DESPEDIDA)
         return
 
     if intencion == "saludo":
         guardar_historial(db, sesion, set_estado([], "menu"))
-        enviar_texto(canal, telefono, _MENSAJE_BIENVENIDA)
+        _enviar_y_guardar(db, sesion, canal, telefono, _MENSAJE_BIENVENIDA)
         return
 
     if intencion == "continuar" and estado in _ESTADOS_CON_IA:
@@ -219,7 +238,7 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str, canal: str = "what
             nuevo_estado = estado
         guardar_historial(db, sesion, set_estado(msgs, nuevo_estado, viajes_actuales))
         guardar_o_actualizar_lead(db, telefono, nombre=nombre, destino=destino)
-        enviar_texto(canal, telefono, respuesta)
+        _enviar_y_guardar(db, sesion, canal, telefono, respuesta)
         enviar_botones(canal, telefono, nuevo_estado)
         return
 
@@ -230,7 +249,7 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str, canal: str = "what
         msgs = mensajes_openai(historial) + [{"role": "assistant", "content": respuesta}]
         guardar_historial(db, sesion, set_estado(msgs, nuevo_estado))
         guardar_o_actualizar_lead(db, telefono, estatus="informado")
-        enviar_texto(canal, telefono, respuesta)
+        _enviar_y_guardar(db, sesion, canal, telefono, respuesta)
         return
 
     if intencion == "continuar" and estado == "menu":
@@ -245,13 +264,13 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str, canal: str = "what
         viajes_actuales = [viaje_nuevo] if viaje_nuevo else []
         guardar_historial(db, sesion, set_estado(msgs, nuevo_estado, viajes_actuales or None))
         guardar_o_actualizar_lead(db, telefono, nombre=nombre, destino=destino, estatus="informado")
-        enviar_texto(canal, telefono, respuesta)
+        _enviar_y_guardar(db, sesion, canal, telefono, respuesta)
         if nuevo_estado in _ESTADOS_CON_IA:
             enviar_botones(canal, telefono, nuevo_estado)
         return
 
-    enviar_texto(
-        canal, telefono,
+    _enviar_y_guardar(
+        db, sesion, canal, telefono,
         "¡Hmm, no entendí bien! 😊 ¿Sobre qué te puedo ayudar?\n\n" + _MENU_OPCIONES,
     )
 
