@@ -33,6 +33,7 @@ from .crm_service import (
     actualizar_estado_comercial,
     actualizar_score,
     agregar_nota,
+    clasificacion_score,
     enviar_mensaje_asesor,
     guardar_mensaje_saliente,
     liberar_chat,
@@ -77,6 +78,15 @@ def _badge_estado(estado: str) -> str:
     return (
         f'<span style="{bg};{color};padding:2px 10px;border-radius:20px;'
         f'font-size:.72rem;font-weight:700;white-space:nowrap">{label}</span>'
+    )
+
+
+def _badge_score(score: int) -> str:
+    label, color, bg = clasificacion_score(score)
+    return (
+        f'<span style="background:{bg};color:{color};padding:2px 8px;border-radius:20px;'
+        f'font-size:.72rem;font-weight:700;white-space:nowrap">'
+        f'{label} <b>{score}</b></span>'
     )
 
 
@@ -157,6 +167,7 @@ label{display:block;font-size:.78rem;color:#666;margin-bottom:4px;font-weight:50
 def crm_lista(
     token: str | None = Query(default=None),
     filtro: str | None = Query(default=None),
+    orden: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
     _check_token(token)
@@ -167,41 +178,59 @@ def crm_lista(
         q = q.filter(SesionIA.requiere_humano == True)  # noqa: E712
     elif filtro == "en_atencion":
         q = q.filter(SesionIA.estado_comercial == "en_atencion_humana")
-    elif filtro == "activos":
-        q = q.filter(SesionIA.sesion_cerrada == False)  # noqa: E712
+    elif filtro == "calientes":
+        q = q.filter(SesionIA.score >= 61, SesionIA.sesion_cerrada == False)  # noqa: E712
     elif filtro == "cerrados":
         q = q.filter(SesionIA.sesion_cerrada == True)  # noqa: E712
     else:
         q = q.filter(SesionIA.sesion_cerrada == False)  # noqa: E712
 
-    sesiones = (
-        q.order_by(
+    if orden == "score":
+        q = q.order_by(SesionIA.score.desc(), SesionIA.ultimo_mensaje.desc())
+    else:
+        q = q.order_by(
             SesionIA.requiere_humano.desc(),
-            SesionIA.asesor_activo.desc(),
+            SesionIA.score.desc(),
             SesionIA.ultimo_mensaje.desc(),
         )
-        .limit(200)
-        .all()
-    )
+
+    sesiones = q.limit(200).all()
 
     # Contadores para tabs
-    total_activos = db.query(SesionIA).filter(SesionIA.sesion_cerrada == False).count()  # noqa
-    total_requiere = db.query(SesionIA).filter(SesionIA.requiere_humano == True).count()  # noqa
+    total_activos  = db.query(SesionIA).filter(SesionIA.sesion_cerrada == False).count()  # noqa
+    total_requiere = db.query(SesionIA).filter(SesionIA.requiere_humano == True).count()   # noqa
     total_atencion = db.query(SesionIA).filter(SesionIA.estado_comercial == "en_atencion_humana").count()
+    total_calientes = db.query(SesionIA).filter(SesionIA.score >= 61, SesionIA.sesion_cerrada == False).count()  # noqa
 
     def _chip(label: str, f: str, count: int | None = None) -> str:
         active = "active" if filtro == f or (f == "" and not filtro) else ""
         cnt = f' <b>({count})</b>' if count is not None else ""
         return (
-            f'<a href="/crm?token={token}&filtro={f}" '
+            f'<a href="/crm?token={token}&filtro={f}&orden={orden or ""}" '
             f'class="filter-chip {active}">{label}{cnt}</a>'
+        )
+
+    def _sort_link(label: str, o: str) -> str:
+        active_style = "font-weight:700;color:#25D366" if orden == o else "color:#888"
+        arrow = " ↓" if orden == o else ""
+        return (
+            f'<a href="/crm?token={token}&filtro={filtro or ""}&orden={o}" '
+            f'style="text-decoration:none;font-size:.78rem;{active_style}">{label}{arrow}</a>'
         )
 
     chips = (
         _chip("Activos", "", total_activos)
-        + _chip(f"Requieren humano", "requiere_humano", total_requiere)
+        + _chip("🔴 Requieren humano", "requiere_humano", total_requiere)
+        + _chip("🌶️ Calientes", "calientes", total_calientes)
         + _chip("En atención humana", "en_atencion", total_atencion)
         + _chip("Cerrados", "cerrados")
+    )
+
+    sort_links = (
+        "Ordenar: "
+        + _sort_link("Más recientes", "reciente")
+        + " &nbsp;|&nbsp; "
+        + _sort_link("Mayor score", "score")
     )
 
     rows = ""
@@ -220,7 +249,6 @@ def crm_lista(
         alerta = ' <span class="alerta" title="Requiere atención humana">🔴</span>' if s.requiere_humano else ""
         canal_icon = "💬" if (s.canal or "") == "messenger" else "📱"
 
-        # Buscar último mensaje del cliente
         ultimo_msg = (
             db.query(Message)
             .filter(Message.sesion_id == s.id, Message.direccion == "inbound")
@@ -228,16 +256,18 @@ def crm_lista(
             .first()
         )
         ultimo_body = _e(ultimo_msg.body[:60]) if ultimo_msg else "—"
+        score_val = s.score or 0
 
         rows += f"""<tr onclick="location.href='/crm/chat/{s.id}?token={token}'" style="cursor:pointer">
             <td>{canal_icon} <code style="font-size:.78rem;color:#555">{_e(s.telefono_cliente[-10:])}</code>{alerta}</td>
             <td>{_e(lead.nombre if lead else None) or '<span style="color:#bbb">—</span>'}</td>
-            <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
                 {_e(lead.destino_interes if lead else None) or '<span style="color:#bbb">—</span>'}
             </td>
+            <td>{_badge_score(score_val)}</td>
             <td>{_badge_estado(s.estado_comercial or "nuevo")}</td>
             <td>{_e(s.asesor_nombre) or '<span style="color:#bbb">Sin asignar</span>'}</td>
-            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#555">
+            <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#555">
                 {ultimo_body}
             </td>
             <td style="color:#aaa;font-size:.78rem">{_fmt_mins(mins)}</td>
@@ -250,7 +280,7 @@ def crm_lista(
         </tr>"""
 
     if not rows:
-        rows = '<tr><td colspan="9" style="text-align:center;color:#aaa;padding:32px">Sin conversaciones</td></tr>'
+        rows = '<tr><td colspan="10" style="text-align:center;color:#aaa;padding:32px">Sin conversaciones</td></tr>'
 
     return HTMLResponse(f"""<!DOCTYPE html>
 <html lang="es">
@@ -274,6 +304,7 @@ tr{{cursor:pointer}}
 
 <div class="container">
     <div class="filters">{chips}</div>
+    <div style="margin-bottom:12px;color:#666">{sort_links}</div>
 
     <div class="card" style="padding:0;overflow:hidden">
         <div style="overflow-x:auto">
@@ -283,6 +314,12 @@ tr{{cursor:pointer}}
                     <th>Teléfono</th>
                     <th>Nombre</th>
                     <th>Destino</th>
+                    <th>
+                        <a href="/crm?token={token}&filtro={filtro or ''}&orden=score"
+                           style="text-decoration:none;color:inherit">
+                            Score {'↓' if orden == 'score' else ''}
+                        </a>
+                    </th>
                     <th>Estado</th>
                     <th>Asesor</th>
                     <th>Último mensaje</th>
@@ -558,11 +595,12 @@ def crm_chat_detalle(
                 </form>
             </div>
             <div class="field-row">
-                <label>Score ({score}/100)</label>
+                <label>Score</label>
+                <div style="margin-bottom:8px">{_badge_score(score)}</div>
                 <form method="post" action="/crm/chat/{sesion_id_str}/score?token={token}">
                     <div style="display:flex;gap:6px">
                         <input type="number" name="score" value="{score}"
-                               min="0" max="100" style="flex:1">
+                               min="0" max="300" style="flex:1" placeholder="Ajustar score">
                         <button class="btn btn-blue" type="submit" style="padding:6px 10px">✓</button>
                     </div>
                 </form>

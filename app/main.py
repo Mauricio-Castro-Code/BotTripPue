@@ -16,7 +16,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .crm_service import guardar_mensaje_entrante, guardar_mensaje_saliente
+from .crm_service import aplicar_score, guardar_mensaje_entrante, guardar_mensaje_saliente, sincronizar_estado_comercial
 from .database import SessionLocal, get_db
 from . import crm as _crm_module
 from .schemas import BroadcastRequest, WhatsAppWebhookPayload
@@ -166,8 +166,10 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str, canal: str = "what
 
     sesion = obtener_o_crear_sesion(db, telefono, canal)
 
-    # Guardar mensaje entrante siempre (antes de cualquier lógica del bot)
+    # Guardar mensaje entrante, actualizar score y estado comercial
     guardar_mensaje_entrante(db, sesion, texto)
+    aplicar_score(db, sesion, texto)
+    sincronizar_estado_comercial(db, sesion)
 
     if sesion.sesion_cerrada:
         sesion.sesion_cerrada = False
