@@ -86,7 +86,7 @@
   ],
   "lugares": ["Hawái"],
   "requisitos": ["Se necesita visa"],
-  "reserva_con": "Desde $8,000, liquida 1 mes antes"
+  "reserva_con": "Desde $10,000, liquida 1 mes antes"
 },
 {
   "tipo": "internacional",
@@ -131,7 +131,7 @@
   ],
   "lugares": ["San José", "Playa Uva", "Playa Limón"],
   "requisitos": ["Pasaporte vigente"],
-  "reserva_con": "$8,000 MXN de anticipo, liquidar 1 mes antes",
+  "reserva_con": "$10,000 MXN de anticipo, liquidar 1 mes antes",
   "notas": "También se adaptan a fechas de vacaciones del cliente."
 },
 {
@@ -151,7 +151,7 @@
   ],
   "lugares": ["Tokio", "Osaka", "Kioto"],
   "requisitos": ["Se necesita visa japonesa"],
-  "reserva_con": "Desde $5,000 MXN"
+  "reserva_con": "Desde $10,000 MXN"
 },
 {
   "tipo": "internacional",
@@ -176,7 +176,7 @@
   ],
   "lugares": ["Medellín", "Guatapé", "Piedra del Peñol", "Cartagena de Indias", "Playa Barú"],
   "requisitos": ["Pasaporte vigente"],
-  "reserva_con": "$5,000 MXN de anticipo, liquidar 1 mes antes",
+  "reserva_con": "$10,000 MXN de anticipo, liquidar 1 mes antes",
   "notas": "Fechas abiertas a vacaciones del cliente. Acepta MSI con Visa y Mastercard."
 },
 {
@@ -224,7 +224,7 @@
   ],
   "lugares": ["Calafate", "Buenos Aires", "Río de Janeiro"],
   "requisitos": ["Pasaporte vigente"],
-  "reserva_con": "$5,000 MXN de anticipo, liquidar 1 mes antes",
+  "reserva_con": "$10,000 MXN de anticipo, liquidar 1 mes antes",
   "notas": "Fechas abiertas a vacaciones del cliente. Promoción especial a partir de 4 personas."
 },
 {
@@ -250,7 +250,7 @@
     "Cusco"
   ],
   "requisitos": ["Pasaporte vigente"],
-  "reserva_con": "$9,000 MXN de anticipo, liquidar 1 mes antes",
+  "reserva_con": "$10,000 MXN de anticipo, liquidar 1 mes antes",
   "notas": "Fechas abiertas a vacaciones del cliente. Promoción especial a partir de 4 personas."
 },
 {
@@ -272,7 +272,7 @@
   ],
   "lugares": ["Bogotá", "Cerro de Monserrate", "San Andrés", "Caribe"],
   "requisitos": ["Pasaporte vigente"],
-  "reserva_con": "$8,000 MXN de anticipo, liquidar 1 mes antes",
+  "reserva_con": "$10,000 MXN de anticipo, liquidar 1 mes antes",
   "notas": "Fechas abiertas a vacaciones del cliente."
 },
 {
@@ -361,7 +361,7 @@
   ],
   "lugares": ["Madrid", "Roma", "Vaticano", "París", "Disneyland París"],
   "requisitos": ["Pasaporte vigente"],
-  "reserva_con": "$3,000 MXN de anticipo, liquidar 1 mes antes",
+  "reserva_con": "$10,000 MXN de anticipo, liquidar 1 mes antes",
   "notas": "Solo 10 lugares disponibles por fecha. Fechas abiertas a vacaciones del cliente."
 },
 {
@@ -401,7 +401,7 @@
   ],
   "lugares": ["Jamaica"],
   "requisitos": ["Pasaporte vigente"],
-  "reserva_con": "$8,000 MXN de anticipo, liquidar 1 mes antes",
+  "reserva_con": "$10,000 MXN de anticipo, liquidar 1 mes antes",
   "notas": "Fechas abiertas a vacaciones del cliente."
 },
 {
@@ -527,7 +527,7 @@
   ],
   "lugares": ["Punta Cana"],
   "requisitos": ["Pasaporte vigente"],
-  "reserva_con": "$5,000 MXN de anticipo, liquidar 1 mes antes",
+  "reserva_con": "$10,000 MXN de anticipo, liquidar 1 mes antes",
   "notas": "Fechas abiertas a vacaciones del cliente. Promoción especial a partir de 4 personas."
 },
 {
