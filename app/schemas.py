@@ -67,3 +67,5 @@ class WhatsAppWebhookPayload(BaseModel):
 
 class BroadcastRequest(BaseModel):
     mensaje: str
+    boton_id: str | None = None
+    boton_titulo: str | None = None

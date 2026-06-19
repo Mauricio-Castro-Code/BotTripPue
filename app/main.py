@@ -337,7 +337,7 @@ def enviar_broadcast(
 ):
     if token != settings.WHATSAPP_VERIFY_TOKEN:
         raise HTTPException(status_code=403, detail="Token inválido")
-    resultado = broadcast_mensaje(db, body.mensaje)
+    resultado = broadcast_mensaje(db, body.mensaje, body.boton_id, body.boton_titulo)
     return resultado
 
 

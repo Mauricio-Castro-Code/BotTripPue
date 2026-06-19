@@ -863,6 +863,21 @@ def manejar_boton(db: Session, telefono: str, boton_id: str, canal: str = "whats
     elif boton_id in ("btn_asesor", "btn_reservar"):
         derivar_a_asesor(db, sesion, canal, telefono, estado)
 
+    elif boton_id == "btn_fanfest_asesor":
+        texto_precar = "Quiero reservar para FAN FEST MÉXICO VS REPÚBLICA CHECA"
+        link = f"https://wa.me/{NUMERO_ASESOR_NACIONAL}?text={quote(texto_precar)}"
+        guardar_o_actualizar_lead(db, telefono, destino="Fan Fest México vs República Checa", estatus="derivado_nacional")
+        enviar_texto(
+            canal, telefono,
+            f"¡Con gusto! 😊 Escríbele directamente al asesor de *Puebla Travel Trips*:\n\n"
+            f"👉 {link}\n\nTe atenderá personalmente a la brevedad. ✈️",
+        )
+        sesion.derivado_at = datetime.now(tz=_TZ_MX)
+        sesion.seguimiento_derivado = None
+        sesion.asesor_activo = True
+        sesion.asesor_desde = datetime.now(tz=_TZ_MX)
+        db.commit()
+
     elif boton_id == "btn_atendido":
         guardar_historial(db, sesion, set_estado([], "cerrada"))
         sesion.sesion_cerrada = True
@@ -1130,7 +1145,30 @@ def get_estadisticas(db: Session) -> dict:
     }
 
 
-def broadcast_mensaje(db: Session, mensaje: str) -> dict:
+def _enviar_botones_promo(telefono: str, boton_id: str, boton_titulo: str) -> None:
+    _post_whatsapp({
+        "messaging_product": "whatsapp",
+        "to": telefono,
+        "type": "interactive",
+        "interactive": {
+            "type": "button",
+            "body": {"text": "¿Te apuntas? 👇"},
+            "action": {
+                "buttons": [
+                    {"type": "reply", "reply": {"id": boton_id, "title": boton_titulo[:20]}},
+                    {"type": "reply", "reply": {"id": "btn_no_interes", "title": "No me interesa"}},
+                ]
+            },
+        },
+    })
+
+
+def broadcast_mensaje(
+    db: Session,
+    mensaje: str,
+    boton_id: str | None = None,
+    boton_titulo: str | None = None,
+) -> dict:
     sesiones = (
         db.query(SesionIA)
         .filter(SesionIA.sesion_cerrada == False)  # noqa: E712
@@ -1141,8 +1179,11 @@ def broadcast_mensaje(db: Session, mensaje: str) -> dict:
     for sesion in sesiones:
         try:
             enviar_mensaje_texto(sesion.telefono_cliente, mensaje)
-            estado = get_estado(list(sesion.historial or []))
-            enviar_botones_reserva(sesion.telefono_cliente, estado)
+            if boton_id and boton_titulo:
+                _enviar_botones_promo(sesion.telefono_cliente, boton_id, boton_titulo)
+            else:
+                estado = get_estado(list(sesion.historial or []))
+                enviar_botones_reserva(sesion.telefono_cliente, estado)
             enviados += 1
         except Exception as exc:
             logger.error("Error en broadcast a %s: %s", sesion.telefono_cliente, exc)
