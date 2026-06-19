@@ -279,7 +279,8 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str, canal: str = "what
         respuesta = get_respuesta_opcion(opcion)
         nuevo_estado = _ESTADO_POR_INTENCION[intencion]
         msgs = mensajes_openai(historial) + [{"role": "assistant", "content": respuesta}]
-        guardar_historial(db, sesion, set_estado(msgs, nuevo_estado))
+        viajes_actuales = get_viajes_interes(historial) if intencion == "menu_grupo" else None
+        guardar_historial(db, sesion, set_estado(msgs, nuevo_estado, viajes_actuales))
         guardar_o_actualizar_lead(db, telefono, estatus="informado")
         _enviar_y_guardar(db, sesion, canal, telefono, respuesta)
         return

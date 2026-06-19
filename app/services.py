@@ -21,7 +21,7 @@ from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .models import Lead, SesionIA
+from .models import Lead, LeadDestino, SesionIA
 from data.paquetes import (
     METODOS_PAGO,
     REQUISITOS,
@@ -106,6 +106,11 @@ NUNCA inventes precios, fechas, transportes, itinerarios, lugares a visitar, act
 
 NUNCA INVENTAR — REGLA DE ESCALAMIENTO:
 Eres un asistente de preguntas frecuentes, no un asesor humano. Si no sabes algo, si la pregunta no se puede responder con los datos del catálogo, o si el cliente pide explícitamente hablar con una persona/asesor, NUNCA inventes una respuesta ni des un dato que no estés seguro. En su lugar, indícale amablemente que un asesor humano puede ayudarlo mejor con eso y marca requiere_asesor=true.
+Ejemplo concreto: si preguntan si un menor de edad puede ir, si hay restricción de edad, política de cancelación, reembolsos, descuentos no listados, o cualquier condición que el catálogo NO mencione explícitamente — NO asumas que aplica el mismo precio, que no hay restricción, o cualquier otra cosa. Di que el asesor lo confirmará y marca requiere_asesor=true.
+
+REGLA: Si en tu "respuesta" sugieres, mencionas o recomiendas que el cliente hable con un asesor/persona humana (con cualquier frase, ej. "un asesor te puede ayudar", "te recomendamos hablar con uno", "habla con nuestro equipo"), es OBLIGATORIO marcar requiere_asesor=true en esa misma llamada. Nunca sugieras contactar a un asesor sin activar el escalamiento — el cliente debe recibir el contacto real, no solo la sugerencia.
+
+TU OBJETIVO ES VENDER: tu prioridad es ayudar a convertir al cliente en una reserva. Sé proactivo y resolutivo con la información del catálogo. Pero en el momento en que ya no puedas avanzar la venta tú mismo (falta un dato que no está en el catálogo, hay que negociar, el cliente duda o pone objeciones que no puedes resolver con el catálogo, o pide hablar con alguien), no te quedes dando vueltas: marca requiere_asesor=true para que un asesor humano tome el control y cierre la venta.
 
 IMPORTANTE: Nunca incluyas links de contacto en tu respuesta. Los botones de acción los maneja el sistema automáticamente.
 
@@ -225,6 +230,18 @@ _PALABRAS_GRUPO = frozenset({
     "equipo", "equipos",
 })
 
+_FRASES_SUGIEREN_ASESOR = (
+    "habla con un asesor", "habla con el asesor", "habla con nuestro asesor",
+    "hablar con un asesor", "hablar con el asesor", "hablar con nuestro asesor",
+    "contacta a un asesor", "contactar a un asesor", "contactar al asesor",
+    "te recomendamos hablar con", "te recomiendo hablar con",
+    "un asesor te puede ayudar", "un asesor te ayudará", "un asesor podrá",
+    "un asesor lo ayudará", "un asesor la ayudará", "un asesor te ayudará",
+    "un asesor puede cotizár", "un asesor puede darte", "un asesor te dará",
+    "un asesor te preparará", "un asesor le preparará",
+    "te conectamos con un asesor", "te conecto con un asesor",
+)
+
 _FRASES_HUMANO = (
     "hablar con una persona", "hablar con un humano", "hablar con alguien",
     "persona real", "ser humano", "atencion humana", "atención humana",
@@ -246,7 +263,7 @@ def clasificar_intencion(texto: str, estado: str) -> str:
     if any(frase in texto_lower for frase in _FRASES_HUMANO):
         return "quiere_humano"
 
-    if estado == "menu":
+    if estado != "chat_grupo":
         palabras_msg = set(texto_lower.split())
         if palabras_msg & _PALABRAS_GRUPO:
             return "menu_grupo"
@@ -409,6 +426,13 @@ def guardar_o_actualizar_lead(
         lead.nombre = nombre
     if destino:
         lead.destino_interes = destino
+        existe = (
+            db.query(LeadDestino)
+            .filter(LeadDestino.telefono == telefono, LeadDestino.destino == destino)
+            .first()
+        )
+        if not existe:
+            db.add(LeadDestino(telefono=telefono, destino=destino))
     if estatus:
         lead.estatus = estatus
     db.commit()
@@ -569,13 +593,18 @@ def generar_respuesta_ia(mensajes: list, estado: str = "menu") -> tuple[str, str
         tool_choice={"type": "function", "function": {"name": "responder_cliente"}},
     )
     args = json.loads(response.choices[0].message.tool_calls[0].function.arguments)
+    respuesta = args["respuesta"]
+    requiere_asesor = bool(args.get("requiere_asesor", False))
+    respuesta_lower = respuesta.lower()
+    if not requiere_asesor and any(frase in respuesta_lower for frase in _FRASES_SUGIEREN_ASESOR):
+        requiere_asesor = True
     return (
-        args["respuesta"],
+        respuesta,
         args.get("nombre_detectado"),
         args.get("destino_detectado"),
         args.get("viaje_interes"),
         args.get("tipo_viaje"),
-        bool(args.get("requiere_asesor", False)),
+        requiere_asesor,
         args.get("resumen_cotizacion"),
     )
 
@@ -997,11 +1026,12 @@ def get_estadisticas(db: Session) -> dict:
     tasa = round(derivados / total * 100, 1) if total else 0.0
 
     # ── Top destinos ──────────────────────────────────────────────────────────
+    # Cuenta leads distintos por destino acumulado en lead_destinos, no el
+    # último destino mencionado (que se sobrescribe en leads.destino_interes).
     top_destinos = (
-        db.query(Lead.destino_interes, func.count(Lead.id).label("total"))
-        .filter(Lead.destino_interes.isnot(None))
-        .group_by(Lead.destino_interes)
-        .order_by(func.count(Lead.id).desc())
+        db.query(LeadDestino.destino, func.count(func.distinct(LeadDestino.telefono)).label("total"))
+        .group_by(LeadDestino.destino)
+        .order_by(func.count(func.distinct(LeadDestino.telefono)).desc())
         .limit(10)
         .all()
     )

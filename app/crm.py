@@ -81,8 +81,11 @@ def _badge_estado(estado: str) -> str:
     )
 
 
-def _badge_score(score: int) -> str:
-    label, color, bg = clasificacion_score(score)
+def _badge_score(score: int, cerrada: bool = False) -> str:
+    if cerrada:
+        label, color, bg = "⚪ Cerrada", "#757575", "#f0f2f5"
+    else:
+        label, color, bg = clasificacion_score(score)
     return (
         f'<span style="background:{bg};color:{color};padding:2px 8px;border-radius:20px;'
         f'font-size:.72rem;font-weight:700;white-space:nowrap">'
@@ -188,11 +191,9 @@ def crm_lista(
     if orden == "score":
         q = q.order_by(SesionIA.score.desc(), SesionIA.ultimo_mensaje.desc())
     else:
-        q = q.order_by(
-            SesionIA.requiere_humano.desc(),
-            SesionIA.score.desc(),
-            SesionIA.ultimo_mensaje.desc(),
-        )
+        # Como WhatsApp: el chat con actividad más reciente (mensaje del
+        # cliente o respuesta del asesor) siempre sube al tope de la lista.
+        q = q.order_by(SesionIA.ultimo_mensaje.desc())
 
     sesiones = q.limit(200).all()
 
@@ -264,7 +265,7 @@ def crm_lista(
             <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
                 {_e(lead.destino_interes if lead else None) or '<span style="color:#bbb">—</span>'}
             </td>
-            <td>{_badge_score(score_val)}</td>
+            <td>{_badge_score(score_val, s.sesion_cerrada)}</td>
             <td>{_badge_estado(s.estado_comercial or "nuevo")}</td>
             <td>{_e(s.asesor_nombre) or '<span style="color:#bbb">Sin asignar</span>'}</td>
             <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#555">
@@ -596,7 +597,7 @@ def crm_chat_detalle(
             </div>
             <div class="field-row">
                 <label>Score</label>
-                <div style="margin-bottom:8px">{_badge_score(score)}</div>
+                <div style="margin-bottom:8px">{_badge_score(score, sesion.sesion_cerrada)}</div>
                 <form method="post" action="/crm/chat/{sesion_id_str}/score?token={token}">
                     <div style="display:flex;gap:6px">
                         <input type="number" name="score" value="{score}"
