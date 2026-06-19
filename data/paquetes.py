@@ -27,7 +27,12 @@ def _primera_fecha(v: dict) -> str:
 
 
 def _formatear_viaje(v: dict) -> str:
-    lines = [f"*{v['destino']}*", f"💰 {v['precio']}", ""]
+    lines = [f"*{v['destino']}*"]
+    continente = v.get("continente", "")
+    if continente:
+        lines.append(f"🌍 Continente: {continente}")
+    lines.append(f"💰 {v['precio']}")
+    lines.append("")
 
     # Fechas
     fechas = [f for f in v.get("fechas", []) if f]

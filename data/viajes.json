@@ -24,6 +24,7 @@
   {
   "tipo": "internacional",
   "destino": "Australia",
+  "continente": "Oceanía",
   "fechas": ["17 al 27 de Noviembre"],
   "no_dias": "11 días",
   "precio": "$88,000 MXN",
@@ -41,6 +42,7 @@
 {
   "tipo": "internacional",
   "destino": "Canadá: Toronto y Vancouver",
+  "continente": "América del Norte",
   "fechas": ["Libres"],
   "no_dias": "5 días",
   "precio": "$14,000 MXN por persona",
@@ -56,6 +58,7 @@
 {
   "tipo": "internacional",
   "destino": "Argentina, Uruguay y Chile",
+  "continente": "América del Sur",
   "fechas": ["30 de octubre al 4 de noviembre 2026"],
   "no_dias": "6 días",
   "precio": "$38,000 MXN por persona",
@@ -75,6 +78,7 @@
 {
   "tipo": "internacional",
   "destino": "Hawái",
+  "continente": "Oceanía",
   "fechas": ["19 al 26 de octubre 2026"],
   "no_dias": "5 días",
   "precio": "$22,300 MXN",
@@ -91,6 +95,7 @@
 {
   "tipo": "internacional",
   "destino": "Egipto: Eclipse 2027",
+  "continente": "África",
   "fechas": ["1 al 8 de agosto 2027"],
   "no_dias": "8 días",
   "precio": "$63,000 MXN por persona",
@@ -116,6 +121,7 @@
 {
   "tipo": "internacional",
   "destino": "Costa Rica: San José, Playa Uva y Playa Limón",
+  "continente": "América Central",
   "fechas": [
     "21 al 26 de septiembre 2026",
     "28 de diciembre 2026 al 2 de enero 2027"
@@ -137,6 +143,7 @@
 {
   "tipo": "internacional",
   "destino": "Japón: Tokio, Osaka y Kioto",
+  "continente": "Asia",
   "fechas": ["1 al 12 de septiembre 2026", "Enero 2027"],
   "no_dias": "12 días",
   "precio": "$58,999 MXN",
@@ -156,6 +163,7 @@
 {
   "tipo": "internacional",
   "destino": "Colombia: Medellín, Guatapé, Cartagena de Indias y Playa Barú",
+  "continente": "América del Sur",
   "fechas": [
     "1 al 7 de agosto 2026",
     "7 al 14 de octubre 2026",
@@ -182,6 +190,7 @@
 {
   "tipo": "internacional",
   "destino": "Brasil: Río de Janeiro - Carnaval 2027",
+  "continente": "América del Sur",
   "fechas": ["1 al 7 de febrero 2027"],
   "no_dias": "7 días",
   "precio": "$35,500 MXN por persona",
@@ -211,6 +220,7 @@
 {
   "tipo": "internacional",
   "destino": "Patagonia y Río de Janeiro: Calafate, Buenos Aires y Río de Janeiro",
+  "continente": "América del Sur",
   "fechas": ["1 al 7 de octubre 2026"],
   "no_dias": "7 días",
   "precio": "$30,000 MXN por persona",
@@ -230,6 +240,7 @@
 {
   "tipo": "internacional",
   "destino": "Perú: Machu Picchu, Cusco y Valle Sagrado",
+  "continente": "América del Sur",
   "fechas": ["1 al 7 de agosto 2026"],
   "no_dias": "7 días",
   "precio": "Desde $32,500 MXN por persona",
@@ -256,6 +267,7 @@
 {
   "tipo": "internacional",
   "destino": "Colombia: Bogotá y San Andrés",
+  "continente": "América del Sur",
   "fechas": [
     "1 al 7 de julio 2026",
     "1 al 7 de noviembre 2026"
@@ -278,6 +290,7 @@
 {
   "tipo": "internacional",
   "destino": "Alemania: Oktoberfest",
+  "continente": "Europa",
   "fechas": ["3 al 16 de octubre 2026"],
   "no_dias": "13 días",
   "precio": "$52,000 MXN por persona",
@@ -298,6 +311,7 @@
 {
   "tipo": "internacional",
   "destino": "Tomorrowland 2026: Bélgica y Eurotrip",
+  "continente": "Europa",
   "fechas": [
     "Segunda semana de julio 2026 (Week 1)",
     "Tercera semana de julio 2026 (Week 2)"
@@ -321,6 +335,7 @@
 {
   "tipo": "internacional",
   "destino": "Tomorrowland Tailandia: Bangkok, Phuket y Playas",
+  "continente": "Asia",
   "fechas": ["Diciembre 2026"],
   "no_dias": null,
   "precio": "$89,000 MXN / $79,000 MXN con visa americana",
@@ -343,6 +358,7 @@
 {
   "tipo": "internacional",
   "destino": "Europa: Madrid, Roma, Vaticano, París y Disneyland París",
+  "continente": "Europa",
   "fechas": [
     "1 al 10 de noviembre 2026",
     "7 al 17 de enero 2027",
@@ -367,6 +383,7 @@
 {
   "tipo": "internacional",
   "destino": "Marruecos, Portugal y España: Marrakech, Lisboa y Madrid",
+  "continente": "Europa y África",
   "fechas": ["19 al 29 de octubre 2026"],
   "no_dias": "11 días (7 en Marruecos, 2 en Portugal, 2 en Madrid)",
   "precio": "$66,500 MXN por persona / $64,000 MXN preventa",
@@ -388,6 +405,7 @@
 {
   "tipo": "internacional",
   "destino": "Jamaica",
+  "continente": "Caribe",
   "fechas": ["14 al 20 de agosto 2026"],
   "no_dias": "5 días",
   "precio": "$25,500 MXN por persona",
@@ -407,6 +425,7 @@
 {
   "tipo": "internacional",
   "destino": "Año Nuevo en el Polo Norte: España, Noruega, Finlandia, Estonia, Suecia y Polonia",
+  "continente": "Europa",
   "fechas": ["26 de diciembre 2026 al 11 de enero 2027"],
   "no_dias": "17 días",
   "precio": "$92,000 MXN / $86,000 MXN preventa",
@@ -426,6 +445,7 @@
 {
   "tipo": "internacional",
   "destino": "Clásico Español: París, Bruselas, Barcelona y Madrid",
+  "continente": "Europa",
   "fechas": ["Octubre 2026"],
   "no_dias": null,
   "precio": "Desde $59,900 MXN por persona",
@@ -445,6 +465,7 @@
 {
   "tipo": "internacional",
   "destino": "EDC Colombia: Medellín, Guatapé y Comuna 13",
+  "continente": "América del Sur",
   "fechas": ["7 al 14 de octubre 2026"],
   "no_dias": "8 días / 4 noches de hospedaje",
   "precio": "$26,000 MXN por persona",
@@ -468,6 +489,7 @@
 {
   "tipo": "internacional",
   "destino": "Alpes Suizos y Europa Medieval: Praga, Budapest, Viena, Milán y Suiza",
+  "continente": "Europa",
   "fechas": [
     "1 al 12 de junio 2026",
     "17 al 28 de agosto 2026",
@@ -493,6 +515,7 @@
 {
   "tipo": "internacional",
   "destino": "XV Años en Europa: Inglaterra, París e Italia",
+  "continente": "Europa",
   "fechas": ["Fechas abiertas a disponibilidad del cliente"],
   "no_dias": "9 días",
   "precio": "Desde $55,000 MXN por persona",
@@ -512,6 +535,7 @@
 {
   "tipo": "internacional",
   "destino": "República Dominicana: Punta Cana",
+  "continente": "Caribe",
   "fechas": [
     "4 al 9 de septiembre 2026",
     "2 al 8 de noviembre 2026"
