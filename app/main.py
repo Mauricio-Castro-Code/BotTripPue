@@ -27,8 +27,11 @@ from .services import (
     _MENU_OPCIONES,
     _ESTADO_POR_INTENCION,
     _ESTADOS_CON_IA,
+    _ESTADOS_AMBIGUOS_ASESOR,
     _OPCION_POR_INTENCION,
+    _PREGUNTA_TIPO_ASESOR,
     clasificar_intencion,
+    derivar_a_asesor,
     enviar_botones,
     enviar_texto,
     generar_respuesta_ia,
@@ -40,6 +43,7 @@ from .services import (
     guardar_o_actualizar_lead,
     manejar_boton,
     mensajes_openai,
+    notificar_cotizacion,
     obtener_o_crear_sesion,
     preparar_historial,
     procesar_seguimientos,
@@ -206,8 +210,29 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str, canal: str = "what
     historial = list(sesion.historial or [])
     estado = get_estado(historial)
 
+    if estado == "esperando_tipo_asesor":
+        texto_lower = texto.lower().strip()
+        if texto_lower == "2" or "internacional" in texto_lower:
+            nuevo_estado = "chat_internacional"
+        elif texto_lower == "1" or "nacional" in texto_lower:
+            nuevo_estado = "chat_nacional"
+        else:
+            _enviar_y_guardar(db, sesion, canal, telefono, _PREGUNTA_TIPO_ASESOR)
+            return
+        guardar_historial(db, sesion, set_estado(mensajes_openai(historial), nuevo_estado))
+        derivar_a_asesor(db, sesion, canal, telefono, nuevo_estado)
+        return
+
     intencion = clasificar_intencion(texto, estado)
     logger.info("[%s] Intención de %s (estado=%s): %s", canal, telefono, estado, intencion)
+
+    if intencion == "quiere_humano":
+        if estado in _ESTADOS_AMBIGUOS_ASESOR:
+            guardar_historial(db, sesion, set_estado(mensajes_openai(historial), "esperando_tipo_asesor"))
+            _enviar_y_guardar(db, sesion, canal, telefono, _PREGUNTA_TIPO_ASESOR)
+        else:
+            derivar_a_asesor(db, sesion, canal, telefono, estado)
+        return
 
     if intencion == "no_interesado":
         guardar_historial(db, sesion, set_estado([], "cerrada"))
@@ -230,7 +255,7 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str, canal: str = "what
     if intencion == "continuar" and estado in _ESTADOS_CON_IA:
         viajes_actuales = get_viajes_interes(historial)
         msgs = preparar_historial(mensajes_openai(historial), texto)
-        respuesta, nombre, destino, viaje_nuevo, tipo_viaje = generar_respuesta_ia(msgs, estado)
+        respuesta, nombre, destino, viaje_nuevo, tipo_viaje, requiere_asesor, resumen_cotizacion = generar_respuesta_ia(msgs, estado)
         msgs.append({"role": "assistant", "content": respuesta})
         if viaje_nuevo and viaje_nuevo not in viajes_actuales:
             viajes_actuales = (viajes_actuales + [viaje_nuevo])[:3]
@@ -241,7 +266,12 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str, canal: str = "what
         guardar_historial(db, sesion, set_estado(msgs, nuevo_estado, viajes_actuales))
         guardar_o_actualizar_lead(db, telefono, nombre=nombre, destino=destino)
         _enviar_y_guardar(db, sesion, canal, telefono, respuesta)
-        enviar_botones(canal, telefono, nuevo_estado)
+        if resumen_cotizacion:
+            notificar_cotizacion(resumen_cotizacion, telefono)
+        if requiere_asesor:
+            derivar_a_asesor(db, sesion, canal, telefono, nuevo_estado)
+        else:
+            enviar_botones(canal, telefono, nuevo_estado)
         return
 
     if intencion in _ESTADO_POR_INTENCION:
@@ -256,7 +286,7 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str, canal: str = "what
 
     if intencion == "continuar" and estado == "menu":
         msgs = preparar_historial([], texto)
-        respuesta, nombre, destino, viaje_nuevo, tipo_viaje = generar_respuesta_ia(msgs, "menu")
+        respuesta, nombre, destino, viaje_nuevo, tipo_viaje, requiere_asesor, _resumen = generar_respuesta_ia(msgs, "menu")
         nuevo_estado = (
             "chat_nacional" if tipo_viaje == "nacional"
             else "chat_internacional" if tipo_viaje == "internacional"
@@ -267,7 +297,12 @@ def _procesar_mensaje(db: Session, telefono: str, texto: str, canal: str = "what
         guardar_historial(db, sesion, set_estado(msgs, nuevo_estado, viajes_actuales or None))
         guardar_o_actualizar_lead(db, telefono, nombre=nombre, destino=destino, estatus="informado")
         _enviar_y_guardar(db, sesion, canal, telefono, respuesta)
-        if nuevo_estado in _ESTADOS_CON_IA:
+        if requiere_asesor and nuevo_estado != "menu":
+            derivar_a_asesor(db, sesion, canal, telefono, nuevo_estado)
+        elif requiere_asesor:
+            guardar_historial(db, sesion, set_estado(mensajes_openai(list(sesion.historial or [])), "esperando_tipo_asesor"))
+            _enviar_y_guardar(db, sesion, canal, telefono, _PREGUNTA_TIPO_ASESOR)
+        elif nuevo_estado in _ESTADOS_CON_IA:
             enviar_botones(canal, telefono, nuevo_estado)
         return
 
@@ -332,6 +367,7 @@ _ESTADO_BOT_LABEL = {
     "chat_cliente_nacional": "Cliente nacional",
     "chat_cliente_internacional": "Cliente internacional",
     "chat_grupo": "Grupo",
+    "esperando_tipo_asesor": "Esperando tipo (asesor)",
     "cerrada": "Cerrada",
 }
 

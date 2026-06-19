@@ -39,6 +39,7 @@ _MAX_HISTORIAL = 20
 
 NUMERO_ASESOR_NACIONAL       = "522228126321"   # Puebla Travel Trips
 NUMERO_ASESOR_INTERNACIONAL  = "522225207938"   # LibertYa
+NUMERO_COTIZACIONES          = "522212664376"   # Recibe el resumen de cotizaciones personalizadas
  
 # ─── Menú ─────────────────────────────────────────────────────────────────────
 
@@ -47,7 +48,8 @@ _MENU_OPCIONES = (
     "1️⃣ Viajes nacionales *(Puebla Travel Trips)*\n"
     "2️⃣ Viajes internacionales *(LibertYa)*\n"
     "3️⃣ Ya aparté un viaje / soy cliente\n"
-    "4️⃣ Pagos, requisitos y más información\n\n"
+    "4️⃣ Pagos, requisitos y más información\n"
+    "5️⃣ Hablar con un asesor humano\n\n"
     "Responde con el número, la categoría o escribe directamente tu duda 👇🏼"
 )
 
@@ -99,13 +101,24 @@ Responde siempre en español, de forma amable y concisa (máximo 3 párrafos cor
 REGLA ABSOLUTA — INFORMACIÓN DE PAQUETES:
 Cuando un cliente pregunte por un destino o paquete, busca en la sección PAQUETES DISPONIBLES la entrada que más se parezca a lo que pide.
 - Si la encuentras: copia EXACTAMENTE los datos del catálogo (precio, fechas, duración, transporte, incluye, reserva). No parafrasees ni inventes datos distintos.
-- Si NO la encuentras: responde amablemente que ese tour no está disponible aún, y ofrece que un asesor puede cotizárselo.
-NUNCA inventes precios, fechas, transportes ni contenidos de un paquete que no estén literalmente en PAQUETES DISPONIBLES.
+- Si NO la encuentras: responde amablemente que ese tour no está disponible aún, y ofrece que un asesor puede cotizárselo. Marca requiere_asesor=true.
+NUNCA inventes precios, fechas, transportes, itinerarios, lugares a visitar, actividades ni ningún otro contenido de un paquete que no esté literalmente en PAQUETES DISPONIBLES. Si el catálogo no menciona un dato (por ejemplo duración exacta, lugares específicos, tamaño de grupo), NO lo inventes ni lo supongas: dilo abiertamente y ofrece que el asesor lo confirme.
 
-IMPORTANTE: Nunca incluyas links de contacto ni menciones al asesor en tu respuesta. Solo proporciona información del destino o paquete. Los botones de acción los maneja el sistema automáticamente.
+NUNCA INVENTAR — REGLA DE ESCALAMIENTO:
+Eres un asistente de preguntas frecuentes, no un asesor humano. Si no sabes algo, si la pregunta no se puede responder con los datos del catálogo, o si el cliente pide explícitamente hablar con una persona/asesor, NUNCA inventes una respuesta ni des un dato que no estés seguro. En su lugar, indícale amablemente que un asesor humano puede ayudarlo mejor con eso y marca requiere_asesor=true.
+
+IMPORTANTE: Nunca incluyas links de contacto en tu respuesta. Los botones de acción los maneja el sistema automáticamente.
 
 URGENCIA Y CONVERSIÓN:
 Cuando el cliente muestre interés concreto en un paquete específico, añade al final de tu respuesta una frase de urgencia suave y natural. Ejemplos: "Este destino es muy solicitado y los lugares se llenan rápido, ¡te recomendamos apartar pronto! 🙌" o "Los cupos para esta salida son limitados, conviene asegurar tu lugar con anticipación. ✈️". No inventes números exactos de disponibilidad ni datos que no estén en el catálogo.
+
+COTIZACIÓN GRUPAL — LEAD CALIENTE:
+Cuando el cliente especifique la composición exacta de su grupo (número de adultos, niños o personas con edades), es la señal más clara de intención de compra. Responde con:
+1. Desglose del costo total: "N adultos × $precio = $subtotal" + "N niños × $precio = $subtotal" + "**Total estimado: $XXX MXN**"
+2. Si hay ambigüedad de edad (ej: 13-17 años pueden ser adulto o niño según la aerolínea), indícalo brevemente.
+3. El monto de anticipo total si está en el catálogo.
+4. Cierra con: "Usa el botón de abajo para hablar con el asesor y confirmar tu reserva. ✈️🙌"
+NUNCA repitas la información del paquete que ya diste en el turno anterior — el cliente ya la tiene.
 """
 
 _CONTEXTO_POR_ESTADO: dict[str, str] = {
@@ -154,6 +167,17 @@ _CONTEXTO_POR_ESTADO: dict[str, str] = {
         "Si la pregunta es sobre procesos internos, cambios de reserva o pagos específicos que no están en el catálogo, "
         "indícale amablemente que un asesor lo ayudará mejor. No incluyas links ni menciones al asesor."
     ),
+    "chat_grupo": (
+        "El cliente está pidiendo un VIAJE GRUPAL o una COTIZACIÓN PERSONALIZADA (empresa, escolar, boda, XV años, amigos, familia, etc.). "
+        "Ya se le pidieron los 6 datos clave: 1) nombre del titular, 2) número de personas (adultos y niños con edad), "
+        "3) destino, 4) número de días, 5) lugar de salida, 6) número de WhatsApp de contacto.\n"
+        "- Si ya proporcionó los 6 datos: confirma los datos recibidos, dile que un asesor le preparará su cotización personalizada, "
+        "marca requiere_asesor=true, y en resumen_cotizacion incluye un resumen formateado con los 6 datos exactos que dio el cliente.\n"
+        "- Si aún falta algún dato: pregunta amablemente SOLO por el/los faltante(s) (no marques requiere_asesor ni llenes resumen_cotizacion todavía).\n"
+        "Si el destino mencionado está en el catálogo, puedes compartir la info general como referencia, "
+        "aclarando que para grupos/cotizaciones personalizadas se hace una cotización especial. "
+        "No incluyas links ni menciones al asesor."
+    ),
 }
 
 # ─── Clasificador de intención (OpenAI) ──────────────────────────────────────
@@ -171,7 +195,9 @@ no_interesado → Indica que no le interesa o quiere cancelar (no me interesa, n
 menu_1        → Pregunta por viajes NACIONALES (dentro de México: playas, pueblos mágicos, Cancún, CDMX…)
 menu_2        → Pregunta por viajes INTERNACIONALES (fuera de México: Europa, Caribe, Asia, cruceros…)
 menu_3        → Ya apartó o compró un viaje, tiene una reserva, es cliente activo
-menu_4        → Pregunta sobre precios, pagos, requisitos, documentos, grupos, bodas, XV años
+menu_4        → Pregunta sobre precios, pagos, requisitos, documentos (SIN mencionar grupo)
+menu_grupo    → Pregunta por un viaje GRUPAL: empresa, escolar, colegio, boda, XV años, amigos, equipo (cualquier viaje para un grupo de personas)
+quiere_humano → Pide explícitamente hablar con una persona, asesor o humano real (no el bot)
 continuar     → Cualquier otra cosa: pregunta específica de un destino, comentario, duda, algo que vio en redes
 
 Estado actual de la conversación: {estado}
@@ -179,23 +205,51 @@ Estado actual de la conversación: {estado}
 REGLA CRÍTICA: Si el estado es chat_nacional, chat_internacional, chat_cliente, chat_cliente_nacional, chat_cliente_internacional o chat_grupo,
 y el mensaje es una pregunta, comentario o duda sobre un destino o viaje (aunque contenga
 palabras cortas como "hi" o "hey" dentro de una oración en español), devuelve "continuar".
+La única excepción es si el cliente pide explícitamente hablar con una persona/asesor humano — ahí devuelve "quiere_humano".
 
-Devuelve ÚNICAMENTE una de estas palabras exactas: saludo, despedida, no_interesado, menu_1, menu_2, menu_3, menu_4, continuar\
+Devuelve ÚNICAMENTE una de estas palabras exactas: saludo, despedida, no_interesado, menu_1, menu_2, menu_3, menu_4, menu_grupo, quiere_humano, continuar\
 """
 
 _VALIDAS_INTENT = frozenset({
     "saludo", "despedida", "no_interesado",
-    "menu_1", "menu_2", "menu_3", "menu_4",
+    "menu_1", "menu_2", "menu_3", "menu_4", "menu_grupo", "quiere_humano",
     "continuar",
 })
 
+_PALABRAS_GRUPO = frozenset({
+    "escolar", "escolares", "colegio", "colegial", "preparatoria", "prepa",
+    "universidad", "universitario", "facultad",
+    "grupal", "grupales", "grupo", "grupos",
+    "empresa", "empresarial", "corporativo", "corporativa",
+    "boda", "bodas", "quinceañera", "quinceaños", "xv",
+    "equipo", "equipos",
+})
 
-_MENU_DIRECTO = {"1": "menu_1", "2": "menu_2", "3": "menu_3", "4": "menu_4"}
+_FRASES_HUMANO = (
+    "hablar con una persona", "hablar con un humano", "hablar con alguien",
+    "persona real", "ser humano", "atencion humana", "atención humana",
+    "hablar con un asesor", "hablar con el asesor", "hablar con una agente",
+    "quiero un asesor", "quiero hablar con", "necesito hablar con",
+    "comunicarme con un asesor", "contactar a un asesor", "contactar al asesor",
+    "agente humano", "no eres una persona", "no eres humano",
+)
+
+
+_MENU_DIRECTO = {"1": "menu_1", "2": "menu_2", "3": "menu_3", "4": "menu_4", "5": "quiere_humano"}
 
 
 def clasificar_intencion(texto: str, estado: str) -> str:
     if estado == "menu" and texto.strip() in _MENU_DIRECTO:
         return _MENU_DIRECTO[texto.strip()]
+
+    texto_lower = texto.lower()
+    if any(frase in texto_lower for frase in _FRASES_HUMANO):
+        return "quiere_humano"
+
+    if estado == "menu":
+        palabras_msg = set(texto_lower.split())
+        if palabras_msg & _PALABRAS_GRUPO:
+            return "menu_grupo"
 
     try:
         response = _openai_client.chat.completions.create(
@@ -216,6 +270,13 @@ def clasificar_intencion(texto: str, estado: str) -> str:
 
 _ESTADOS_NACIONALES = {"chat_nacional", "chat_cliente_nacional"}
 _ESTADOS_INTERNACIONALES = {"chat_internacional", "chat_cliente_internacional", "chat_cliente"}
+_ESTADOS_AMBIGUOS_ASESOR = {"menu", "chat_cliente"}
+
+_PREGUNTA_TIPO_ASESOR = (
+    "¡Claro! 😊 Para conectarte con el asesor correcto, dime:\n\n"
+    "1️⃣ Tu consulta es sobre viajes *nacionales* (Puebla Travel Trips)\n"
+    "2️⃣ Tu consulta es sobre viajes *internacionales* (LibertYa)"
+)
 
 
 def _numero_asesor(estado: str) -> str:
@@ -266,6 +327,7 @@ _ESTADO_POR_INTENCION: dict[str, str] = {
     "menu_2": "chat_internacional",
     "menu_3": "chat_cliente",
     "menu_4": "chat_cliente",
+    "menu_grupo": "chat_grupo",
 }
 
 _OPCION_POR_INTENCION: dict[str, str] = {
@@ -273,6 +335,7 @@ _OPCION_POR_INTENCION: dict[str, str] = {
     "menu_2": "2",
     "menu_3": "3",
     "menu_4": "4",
+    "menu_grupo": "grupo",
 }
 
 
@@ -391,11 +454,41 @@ _FUNCION_RESPONDER = {
                     "Null si no se puede determinar."
                 ),
             },
+            "requiere_asesor": {
+                "type": "boolean",
+                "description": (
+                    "true si el cliente pidió explícitamente hablar con un humano/asesor, "
+                    "o si el paquete/info que pide no está en el catálogo y no se puede responder con certeza, "
+                    "o si en chat_grupo ya se recibieron los 6 datos (titular, personas, destino, días, lugar de salida, whatsapp). "
+                    "false en cualquier otro caso."
+                ),
+            },
+            "resumen_cotizacion": {
+                "type": "string",
+                "description": (
+                    "SOLO en estado chat_grupo y cuando ya se recibieron los 6 datos: "
+                    "resumen formateado con nombre del titular, personas (adultos y niños con edad), "
+                    "destino, días, lugar de salida y número de WhatsApp de contacto, tal como los dio el cliente. "
+                    "Null en cualquier otro caso."
+                ),
+            },
         },
         "required": ["respuesta"],
     },
 }
 
+
+_PREGUNTA_GRUPO = (
+    "¡Perfecto! Nos especializamos en viajes grupales y personalizados 🎉\n\n"
+    "Para prepararte tu cotización, cuéntanos:\n\n"
+    "🙋 *Nombre del titular* de la cotización\n"
+    "👥 *¿Cuántas personas viajarían?* (adultos y niños, con edad de los niños)\n"
+    "📍 *¿A dónde quieren ir?* (destino)\n"
+    "📅 *¿Cuántos días?*\n"
+    "🛫 *¿Desde dónde salen?* (ciudad de origen)\n"
+    "📱 *Número de WhatsApp* de contacto\n\n"
+    "Con esos datos un asesor te preparará tu cotización personalizada. 😊"
+)
 
 _PREGUNTA_NACIONAL = (
     "¡Perfecto! 🇲🇽✈️ Tenemos salidas a distintos destinos dentro de México.\n\n"
@@ -424,15 +517,46 @@ def get_respuesta_opcion(opcion: str) -> str:
         return get_resumen_nacionales()
     if opcion == "2":
         return get_resumen_internacionales()
+    if opcion == "grupo":
+        return _PREGUNTA_GRUPO
     return _RESPUESTAS_FIJAS.get(opcion, "")
 
 
-def generar_respuesta_ia(mensajes: list, estado: str = "menu") -> tuple[str, str | None, str | None, str | None, str | None]:
-    """Llama a OpenAI. Devuelve (respuesta, nombre_detectado, destino_detectado, viaje_interes, tipo_viaje)."""
+_DIAS_ES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+_MESES_ES = [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+]
+
+
+def _fecha_es(dt: datetime) -> str:
+    return f"{_DIAS_ES[dt.weekday()]} {dt.day} de {_MESES_ES[dt.month - 1]} de {dt.year}"
+
+
+def _contexto_fecha() -> str:
+    hoy = datetime.now(tz=_TZ_MX)
+    dias_hasta_viernes = (4 - hoy.weekday()) % 7 or 7
+    viernes = hoy + timedelta(days=dias_hasta_viernes)
+    sabado = viernes + timedelta(days=1)
+    domingo = viernes + timedelta(days=2)
+    return (
+        f"Fecha y hora actual (Ciudad de México): {_fecha_es(hoy)}, {hoy.strftime('%H:%M')}.\n"
+        f"Próximo fin de semana: viernes {viernes.strftime('%d/%m')}, "
+        f"sábado {sabado.strftime('%d/%m')}, domingo {domingo.strftime('%d/%m/%Y')}.\n"
+        "Cuando el cliente diga 'este fin', 'este finde', 'este fin de semana' o similar, "
+        "interpreta que se refiere a esas fechas exactas y busca en el catálogo si hay salidas esos días.\n"
+        "NUNCA inventes ni asumas una fecha si no tienes certeza — usa siempre la fecha actual de arriba."
+    )
+
+
+def generar_respuesta_ia(mensajes: list, estado: str = "menu") -> tuple[str, str | None, str | None, str | None, str | None, bool, str | None]:
+    """Llama a OpenAI. Devuelve (respuesta, nombre_detectado, destino_detectado, viaje_interes, tipo_viaje, requiere_asesor, resumen_cotizacion)."""
     contexto = _CONTEXTO_POR_ESTADO.get(estado, "")
     paquetes_actuales = get_contexto_paquetes()
     sistema = (
-        _SISTEMA_BASE
+        _contexto_fecha()
+        + "\n\n"
+        + _SISTEMA_BASE
         + f"\nPAQUETES DISPONIBLES:\n{paquetes_actuales}"
         + (f"\n\nCONTEXTO ACTUAL: {contexto}" if contexto else "")
     )
@@ -451,7 +575,15 @@ def generar_respuesta_ia(mensajes: list, estado: str = "menu") -> tuple[str, str
         args.get("destino_detectado"),
         args.get("viaje_interes"),
         args.get("tipo_viaje"),
+        bool(args.get("requiere_asesor", False)),
+        args.get("resumen_cotizacion"),
     )
+
+
+def notificar_cotizacion(resumen: str, telefono_cliente: str) -> None:
+    """Envía el resumen de una cotización personalizada al número interno de cotizaciones."""
+    mensaje = f"📋 Nueva cotización personalizada\n\n{resumen}\n\nTel. de contacto del cliente en WhatsApp: {telefono_cliente}"
+    enviar_mensaje_texto(NUMERO_COTIZACIONES, mensaje)
 
 
 # ─── WhatsApp ─────────────────────────────────────────────────────────────────
@@ -673,6 +805,21 @@ def _enviar_recordatorio_cierre(telefono: str, estado: str, canal: str = "whatsa
         })
 
 
+def derivar_a_asesor(db: Session, sesion: SesionIA, canal: str, telefono: str, estado: str) -> None:
+    """Envía el link del asesor humano y marca la sesión como derivada."""
+    historial = list(sesion.historial or [])
+    viajes_interes = get_viajes_interes(historial)
+    estatus_derivado = "derivado_nacional" if estado in _ESTADOS_NACIONALES else "derivado_internacional"
+    guardar_o_actualizar_lead(db, telefono, estatus=estatus_derivado)
+    duda = get_ultima_duda(historial) if estado in ("chat_cliente_nacional", "chat_cliente_internacional") else None
+    enviar_texto(canal, telefono, _mensaje_derivar(estado, viajes_interes, duda))
+    sesion.derivado_at = datetime.now(tz=_TZ_MX)
+    sesion.seguimiento_derivado = None
+    sesion.asesor_activo = True
+    sesion.asesor_desde = datetime.now(tz=_TZ_MX)
+    db.commit()
+
+
 def manejar_boton(db: Session, telefono: str, boton_id: str, canal: str = "whatsapp") -> None:
     sesion = obtener_o_crear_sesion(db, telefono, canal)
     estado = get_estado(list(sesion.historial or []))
@@ -685,17 +832,7 @@ def manejar_boton(db: Session, telefono: str, boton_id: str, canal: str = "whats
         enviar_texto(canal, telefono, _MENSAJE_DESPEDIDA)
 
     elif boton_id in ("btn_asesor", "btn_reservar"):
-        historial = list(sesion.historial or [])
-        viajes_interes = get_viajes_interes(historial)
-        estatus_derivado = "derivado_nacional" if estado in _ESTADOS_NACIONALES else "derivado_internacional"
-        guardar_o_actualizar_lead(db, telefono, estatus=estatus_derivado)
-        duda = get_ultima_duda(historial) if estado in ("chat_cliente_nacional", "chat_cliente_internacional") else None
-        enviar_texto(canal, telefono, _mensaje_derivar(estado, viajes_interes, duda))
-        sesion.derivado_at = datetime.now(tz=_TZ_MX)
-        sesion.seguimiento_derivado = None
-        sesion.asesor_activo = True
-        sesion.asesor_desde = datetime.now(tz=_TZ_MX)
-        db.commit()
+        derivar_a_asesor(db, sesion, canal, telefono, estado)
 
     elif boton_id == "btn_atendido":
         guardar_historial(db, sesion, set_estado([], "cerrada"))
