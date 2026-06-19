@@ -350,9 +350,10 @@ def _render_mensajes(mensajes: list[Message]) -> str:
     prev_date = None
     for m in mensajes:
         ts = m.created_at
-        if ts and ts.tzinfo is None:
+        if ts:
             from zoneinfo import ZoneInfo
-            ts = ts.replace(tzinfo=ZoneInfo("America/Mexico_City"))
+            tz_mx = ZoneInfo("America/Mexico_City")
+            ts = ts.replace(tzinfo=tz_mx) if ts.tzinfo is None else ts.astimezone(tz_mx)
 
         date_str = ts.strftime("%d/%m/%Y") if ts else ""
         time_str = ts.strftime("%H:%M") if ts else ""

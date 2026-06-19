@@ -1125,7 +1125,9 @@ def get_estadisticas(db: Session) -> dict:
             "nombre": l.nombre or "—",
             "destino": l.destino_interes or "—",
             "estatus": l.estatus,
-            "fecha": l.created_at.strftime("%d/%m %H:%M") if l.created_at else "—",
+            "fecha": (
+                l.created_at.astimezone(_TZ_MX) if l.created_at.tzinfo else l.created_at.replace(tzinfo=_TZ_MX)
+            ).strftime("%d/%m %H:%M") if l.created_at else "—",
         }
         for l in db.query(Lead).order_by(Lead.created_at.desc()).limit(15).all()
     ]
